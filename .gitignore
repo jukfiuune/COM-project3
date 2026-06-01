@@ -1,0 +1,14 @@
+bin/
+obj/
+*.*cache
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.DS_Store
+*.vscode/
+*.idea/
+*.vs/
+*.sln
+*.suo
