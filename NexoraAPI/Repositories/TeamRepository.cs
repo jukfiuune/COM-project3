@@ -5,15 +5,17 @@ using NexoraAPI.Models;
 
 namespace NexoraAPI.Repositories;
 
-public class TeamRepository : ITeamRepository
+public class TeamRepository : MongoRepositoryBase<Team>, ITeamRepository
 {
     private readonly IMongoCollection<Team> _teams;
 
-    public TeamRepository(IOptions<MongoDbSettings> settings)
+    public TeamRepository(IOptions<MongoDbSettings> settings) : base(settings, "teams")
     {
-        var client = new MongoClient(settings.Value.ConnectionString);
-        var database = client.GetDatabase(settings.Value.DatabaseName);
-        _teams = database.GetCollection<Team>("teams");
+        _teams = Collection;
+
+        // БД: Compound index on members.userId for efficient GetByUserIdAsync queries
+        var membersIndex = Builders<Team>.IndexKeys.Ascending("members.userId");
+        _teams.Indexes.CreateOne(new CreateIndexModel<Team>(membersIndex));
     }
 
     public async Task<Team?> GetByIdAsync(string id) =>

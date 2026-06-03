@@ -5,15 +5,17 @@ using NexoraAPI.Models;
 
 namespace NexoraAPI.Repositories;
 
-public class TeamImageRepository : ITeamImageRepository
+public class TeamImageRepository : MongoRepositoryBase<TeamImage>, ITeamImageRepository
 {
     private readonly IMongoCollection<TeamImage> _images;
 
-    public TeamImageRepository(IOptions<MongoDbSettings> settings)
+    public TeamImageRepository(IOptions<MongoDbSettings> settings) : base(settings, "team_images")
     {
-        var client = new MongoClient(settings.Value.ConnectionString);
-        var database = client.GetDatabase(settings.Value.DatabaseName);
-        _images = database.GetCollection<TeamImage>("team_images");
+        _images = Collection;
+
+        // БД: Index on teamId for efficient GetByTeamIdAsync queries
+        var teamIdIndex = Builders<TeamImage>.IndexKeys.Ascending(i => i.TeamId);
+        _images.Indexes.CreateOne(new CreateIndexModel<TeamImage>(teamIdIndex));
     }
 
     public async Task<List<TeamImage>> GetByTeamIdAsync(string teamId) =>
