@@ -163,6 +163,44 @@ public class TeamServiceTests
         Assert.Empty(error);
     }
 
+    // ─── DeleteTeamAsync ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task DeleteTeamAsync_ShouldFail_WhenTeamNotFound()
+    {
+        _repoMock.Setup(r => r.GetByIdAsync("nonexistent")).ReturnsAsync((Team?)null);
+
+        var (success, error) = await _service.DeleteTeamAsync("nonexistent", "owner-1");
+
+        Assert.False(success);
+        Assert.Equal("Team not found.", error);
+    }
+
+    [Fact]
+    public async Task DeleteTeamAsync_ShouldFail_WhenRequesterIsNotOwner()
+    {
+        var team = BuildTeam("team-1", "owner-1", extraMember: "member-1");
+        _repoMock.Setup(r => r.GetByIdAsync("team-1")).ReturnsAsync(team);
+
+        var (success, error) = await _service.DeleteTeamAsync("team-1", "member-1");
+
+        Assert.False(success);
+        Assert.Equal("Only the team owner can delete the team.", error);
+    }
+
+    [Fact]
+    public async Task DeleteTeamAsync_ShouldSucceed_WhenOwnerDeletes()
+    {
+        var team = BuildTeam("team-1", "owner-1");
+        _repoMock.Setup(r => r.GetByIdAsync("team-1")).ReturnsAsync(team);
+        _repoMock.Setup(r => r.DeleteAsync("team-1")).ReturnsAsync(true);
+
+        var (success, error) = await _service.DeleteTeamAsync("team-1", "owner-1");
+
+        Assert.True(success);
+        Assert.Empty(error);
+    }
+
     // ─── Helpers ──────────────────────────────────────────────────────────────────
 
     private static Team BuildTeam(string id, string ownerId, string? extraMember = null)

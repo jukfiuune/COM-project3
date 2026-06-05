@@ -38,8 +38,30 @@ function teamCard(team) {
             <div class="team-card-footer">
                 <span class="member-count">${team.members.length} member${team.members.length !== 1 ? 's' : ''}</span>
                 <span class="role-badge role-${role}">${role}</span>
+                ${isOwner ? `<button class="btn-delete-team" onclick="event.stopPropagation(); deleteTeam('${team.id}', '${escapeHtml(team.name)}')">&times; Delete</button>` : ''}
             </div>
         </div>`;
+}
+
+async function deleteTeam(teamId, teamName) {
+    if (!confirm(`Delete team "${teamName}"? This cannot be undone.`)) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/teams/${teamId}?userId=${CURRENT_USER_ID}`, {
+            method: 'DELETE'
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            showToast(data.error ?? 'Failed to delete team.', true);
+            return;
+        }
+
+        showToast('Team deleted.');
+        loadTeams();
+    } catch {
+        showToast('Could not connect to API.', true);
+    }
 }
 
 function openCreateModal() {

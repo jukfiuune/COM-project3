@@ -168,6 +168,22 @@ nav .nav-links a.active {
     color: #94a3b8;
 }
 
+.btn-delete-team {
+    margin-left: auto;
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-delete-team:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
 /* EMPTY STATE */
 .empty-state {
     text-align: center;

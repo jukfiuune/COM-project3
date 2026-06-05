@@ -59,6 +59,16 @@ public static class TeamEndpoints
             return success ? Results.Ok() : Results.BadRequest(new { error });
         });
 
+        // DELETE /api/teams/{id}?userId=xxx  (owner only)
+        group.MapDelete("/{id}", async (string id, string userId, ITeamService service) =>
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return Results.BadRequest("userId is required.");
+
+            var (success, error) = await service.DeleteTeamAsync(id, userId);
+            return success ? Results.NoContent() : Results.BadRequest(new { error });
+        });
+
         // GET /api/teams/{id}/images
         group.MapGet("/{id}/images", async (string id, ITeamImageService imageService) =>
         {

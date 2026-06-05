@@ -80,6 +80,20 @@ public class TeamService : ITeamService
         return (success, success ? string.Empty : "Failed to remove member.");
     }
 
+    public async Task<(bool Success, string Error)> DeleteTeamAsync(string teamId, string requestingUserId)
+    {
+        var team = await _repository.GetByIdAsync(teamId);
+        if (team is null)
+            return (false, "Team not found.");
+
+        var requester = team.Members.FirstOrDefault(m => m.UserId == requestingUserId);
+        if (requester?.Role != TeamRole.Owner)
+            return (false, "Only the team owner can delete the team.");
+
+        var success = await _repository.DeleteAsync(teamId);
+        return (success, success ? string.Empty : "Failed to delete team.");
+    }
+
     private static TeamResponseDto MapToDto(Team team) => new(
         team.Id,
         team.Name,
