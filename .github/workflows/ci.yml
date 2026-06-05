@@ -21,7 +21,7 @@ jobs:
 
       - name: Build and push cleanmap-api
         run: |
-          IMAGE="${{ secrets.DOCKER_USERNAME }}/cleanmap-api"
+          IMAGE="martin590/com-project3"
           docker build -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" -f server/Dockerfile server
           docker push "$IMAGE:${{ github.sha }}"
           docker push "$IMAGE:latest"
