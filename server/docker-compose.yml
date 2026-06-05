@@ -1,0 +1,7 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: API/Dockerfile
+    ports:
+      - "5432:5432"
