@@ -18,6 +18,7 @@ public static class WebApplicationExtensions
         Directory.CreateDirectory(wwwroot);
         app.UseStaticFiles();
         app.UseCors(CleanMapCorsPolicyNames.CleanMap);
+        app.UseMiddleware<RequestLoggingMiddleware>();
         app.UseMiddleware<CleanMapExceptionMiddleware>();
         app.MapCleanMapEndpoints();
         app.MapTeamEndpoints();

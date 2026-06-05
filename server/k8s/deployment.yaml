@@ -41,6 +41,21 @@ spec:
                 configMapKeyRef:
                   name: cleanmap-config
                   key: CleanMapDatabase__ReportsCollectionName
+            - name: Observability__Enabled
+              valueFrom:
+                configMapKeyRef:
+                  name: cleanmap-config
+                  key: Observability__Enabled
+            - name: Observability__ServiceName
+              valueFrom:
+                configMapKeyRef:
+                  name: cleanmap-config
+                  key: Observability__ServiceName
+            - name: Observability__OtlpEndpoint
+              valueFrom:
+                configMapKeyRef:
+                  name: cleanmap-config
+                  key: Observability__OtlpEndpoint
           readinessProbe:
             httpGet:
               path: /api/cleanmap/health
