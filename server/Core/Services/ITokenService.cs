@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using Data.Entities;
+using Core.Entities;
 
 namespace Core.Services;
 

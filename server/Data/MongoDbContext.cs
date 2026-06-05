@@ -1,5 +1,5 @@
 using MongoDB.Driver;
-using Data.Entities;
+using Core.Entities;
 
 namespace Data;
 

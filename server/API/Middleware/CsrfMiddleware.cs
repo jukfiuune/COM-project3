@@ -63,21 +63,21 @@ public class CsrfMiddleware
             }
         }
 
-        await _next(context);
-
         // Set/refresh the CSRF cookie on every response (non-HttpOnly so JS can read it)
-        if (!context.Response.HasStarted)
+        if (!context.Response.HasStarted && !context.Request.Cookies.ContainsKey(CsrfCookieName))
         {
             var token = GenerateCsrfToken();
             context.Response.Cookies.Append(CsrfCookieName, token, new CookieOptions
             {
                 HttpOnly = false,          // JS must be able to read this
-                Secure = true,
+                Secure = context.Request.IsHttps,
                 SameSite = SameSiteMode.Strict,
                 Path = "/",
                 MaxAge = TimeSpan.FromHours(2)
             });
         }
+
+        await _next(context);
     }
 
     private static string GenerateCsrfToken()

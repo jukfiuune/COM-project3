@@ -1,7 +1,7 @@
 using MongoDB.Bson;
-using Data.Entities;
+using Core.Entities;
 
-namespace Data.Repositories;
+namespace Core.Repositories;
 
 public interface IRefreshTokenRepository
 {

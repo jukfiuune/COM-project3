@@ -1,8 +1,8 @@
 using System.Text.RegularExpressions;
 using Core.Configuration;
 using Core.DTOs;
-using Data.Entities;
-using Data.Repositories;
+using Core.Entities;
+using Core.Repositories;
 using MongoDB.Bson;
 
 namespace Core.Services;

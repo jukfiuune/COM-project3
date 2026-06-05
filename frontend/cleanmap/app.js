@@ -125,7 +125,9 @@ function buildApiCandidates() {
   const preferred = 'https://com-project3.onrender.com';
   const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
   const storedIsLocal = stored && (stored.includes('localhost') || stored.includes('127.0.0.1'));
+  // Always try the current origin first — nginx proxies /api/ to the backend
   const candidates = [
+    window.location.origin,
     storedIsLocal && !isLocal ? null : stored,
     preferred,
     ...(isLocal ? [
@@ -521,11 +523,11 @@ function updateProgress() {
 
 async function reverseGeocode(lat, lng) {
   try {
-    const data = await fetchJson(
+    const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
-      { headers: { 'Accept-Language': 'en' } },
-      5000
+      { headers: { 'Accept-Language': 'en' }, signal: AbortSignal.timeout(5000) }
     );
+    const data = await response.json();
     if (!data || !data.address) return null;
     const a = data.address;
     const parts = [

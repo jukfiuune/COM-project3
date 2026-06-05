@@ -6,6 +6,7 @@ using Data.Teams;
 using System.Text;
 using Core.Configuration;
 using Core.Services;
+using Core.Repositories;
 using Data;
 using Data.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

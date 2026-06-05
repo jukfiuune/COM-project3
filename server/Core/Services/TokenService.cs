@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Core.Configuration;
-using Data.Entities;
+using Core.Entities;
 
 namespace Core.Services;
 

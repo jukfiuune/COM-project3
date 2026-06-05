@@ -1,6 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
-using Data.Entities;
+using Core.Entities;
+using Core.Repositories;
 
 namespace Data.Repositories;
 

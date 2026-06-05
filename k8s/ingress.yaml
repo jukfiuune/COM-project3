@@ -13,7 +13,7 @@ spec:
           service:
             name: api-service
             port:
-              number: 8080
+              number: 5432
       - path: /
         pathType: Prefix
         backend:
