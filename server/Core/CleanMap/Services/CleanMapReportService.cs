@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using Core.Observability;
+
 namespace Core.CleanMap;
 
 public sealed class CleanMapReportService(ICleanMapReportRepository repository) : ICleanMapReportService
@@ -16,13 +19,21 @@ public sealed class CleanMapReportService(ICleanMapReportRepository repository) 
         CreateCleanMapReportRequest request,
         CancellationToken cancellationToken)
     {
+        using var activity = CleanMapObservability.ActivitySource.StartActivity("cleanmap.report.create");
+        activity?.SetTag("report.tags.count", request.Tags?.Count ?? 0);
+        activity?.SetTag("report.has_photo_before", !string.IsNullOrWhiteSpace(request.PhotoBefore));
+        activity?.SetTag("report.has_address", !string.IsNullOrWhiteSpace(request.Address));
+
         var validationError = ValidateCreate(request);
         if (validationError is not null)
         {
+            activity?.SetStatus(ActivityStatusCode.Error, validationError);
+            CleanMapObservability.ReportsCreateFailed.Add(1);
             return CreateCleanMapReportResult.ValidationError(validationError);
         }
 
         var report = await repository.CreateAsync(request, cancellationToken);
+        CleanMapObservability.ReportsCreated.Add(1);
         return CreateCleanMapReportResult.Success(report);
     }
 
@@ -31,12 +42,26 @@ public sealed class CleanMapReportService(ICleanMapReportRepository repository) 
         MarkCleanRequest request,
         CancellationToken cancellationToken)
     {
+        using var activity = CleanMapObservability.ActivitySource.StartActivity("cleanmap.report.clean");
+        activity?.SetTag("report.id", id);
+
         if (string.IsNullOrWhiteSpace(id))
         {
+            activity?.SetStatus(ActivityStatusCode.Error, "Report id is required.");
+            CleanMapObservability.ReportsCleanFailed.Add(1);
             return MarkCleanMapReportResult.ValidationError("Report id is required.");
         }
 
         var report = await repository.MarkCleanAsync(id, request, cancellationToken);
+        if (report is null)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, "Report not found.");
+            CleanMapObservability.ReportsCleanFailed.Add(1);
+        }
+        else
+        {
+            CleanMapObservability.ReportsCleaned.Add(1);
+        }
         return MarkCleanMapReportResult.Success(report);
     }
 

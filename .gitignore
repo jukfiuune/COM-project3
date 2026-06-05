@@ -18,3 +18,5 @@ secret.yaml
 secret*.yaml
 appsettings.json
 appsettings.*.json
+alloy-*.yaml
+.env

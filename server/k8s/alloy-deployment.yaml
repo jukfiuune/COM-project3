@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cleanmap-alloy
+  namespace: default
+  labels:
+    app: cleanmap-alloy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cleanmap-alloy
+  template:
+    metadata:
+      labels:
+        app: cleanmap-alloy
+    spec:
+      serviceAccountName: cleanmap-alloy-sa
+      containers:
+        - name: cleanmap-alloy
+          image: grafana/alloy:latest
+          args:
+            - run
+            - /etc/alloy/config.alloy
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+            - containerPort: 4318
+              name: otlp-http
+          env:
+            - name: GRAFANA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cleanmap-observability-secret
+                  key: GRAFANA_API_KEY
+            - name: GRAFANA_OTLP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cleanmap-observability-secret
+                  key: GRAFANA_OTLP_URL
+            - name: LOKI_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cleanmap-observability-secret
+                  key: LOKI_URL
+            - name: LOKI_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: cleanmap-observability-secret
+                  key: LOKI_USERNAME
+            - name: LOKI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cleanmap-observability-secret
+                  key: LOKI_PASSWORD
+          volumeMounts:
+            - name: alloy-config-volume
+              mountPath: /etc/alloy
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+      volumes:
+        - name: alloy-config-volume
+          configMap:
+            name: cleanmap-alloy-config
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cleanmap-alloy-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cleanmap-alloy-pod-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "namespaces"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cleanmap-alloy-pod-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: cleanmap-alloy-sa
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cleanmap-alloy-pod-reader
+  apiGroup: rbac.authorization.k8s.io
