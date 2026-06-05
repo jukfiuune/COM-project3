@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CleanMap</title>
+  <meta name="theme-color" content="#0b1119">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div class="brand-text">
+          <div class="brand-title">CleanMap</div>
+          <div class="brand-sub">Clean City Mission Control</div>
+        </div>
+      </div>
+      <div class="progress-block">
+        <div class="progress-label">Cleaned <span id="progressText">0/0</span></div>
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="reportBtn" class="btn primary">Report Pollution</button>
+        <button id="locateBtn" class="btn ghost">Find Me</button>
+        <a href="teams.html" class="btn ghost">Teams</a>
+      </div>
+    </header>
+
+    <div id="map"></div>
+    <div class="map-overlay city-grid" aria-hidden="true"></div>
+    <div class="map-overlay glow-ring" aria-hidden="true"></div>
+
+    <section class="bottom-panel">
+      <div class="panel-row">
+        <div class="panel-stat">
+          <div class="stat-label">Total Reports</div>
+          <div id="totalCount" class="stat-value">0</div>
+        </div>
+        <div class="panel-stat">
+          <div class="stat-label">Cleaned</div>
+          <div id="cleanedCount" class="stat-value">0</div>
+        </div>
+        <div class="panel-stat">
+          <div class="stat-label">Pending</div>
+          <div id="dirtyCount" class="stat-value">0</div>
+        </div>
+      </div>
+      <div class="panel-progress">
+        <div class="progress-track">
+          <div id="progressFillBottom" class="progress-fill"></div>
+        </div>
+      </div>
+      <div class="panel-actions">
+        <button id="reportBtnBottom" class="btn primary">New Report</button>
+        <button id="reviewBtn" class="btn ghost">Review All</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="reportModal" class="modal hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">New Pollution Report</div>
+          <div class="modal-sub">Capture a photo and tag the waste type.</div>
+        </div>
+        <button id="closeReport" class="btn icon">Close</button>
+      </div>
+      <div class="modal-body grid">
+        <div class="form-block">
+          <label class="field-label">Location</label>
+          <div id="coordText" class="coord-pill">Locating...</div>
+
+          <label class="field-label">Address</label>
+          <div id="addressDisplay" class="coord-pill address-display">Detecting address...</div>
+
+          <label class="field-label">Waste Types</label>
+          <div class="tag-grid">
+            <button class="tag-button" data-tag="Plastic">Plastic</button>
+            <button class="tag-button" data-tag="Organic">Organic</button>
+            <button class="tag-button" data-tag="Hazardous">Hazardous</button>
+            <button class="tag-button" data-tag="Construction">Construction</button>
+            <button class="tag-button" data-tag="Other">Other</button>
+          </div>
+
+          <label class="field-label">Notes</label>
+          <textarea id="notesInput" class="text-area" placeholder="Optional details"></textarea>
+        </div>
+
+        <div class="camera-block">
+          <div class="camera-frame">
+            <video id="reportVideo" autoplay playsinline></video>
+            <img id="reportPreview" class="hidden" alt="Captured preview">
+          </div>
+          <div class="camera-actions">
+            <button id="captureReport" class="btn primary">Capture Photo</button>
+            <button id="retakeReport" class="btn ghost hidden">Retake</button>
+          </div>
+          <div id="reportHint" class="hint-text">Use the rear camera to capture the pollution site.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="submitReport" class="btn primary">Submit Report</button>
+        <button id="cancelReport" class="btn ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="detailModal" class="modal hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card wide">
+      <div class="modal-header">
+        <div>
+          <div id="detailTitle" class="modal-title">Report Details</div>
+          <div id="detailStatus" class="modal-sub">Status: Dirty</div>
+        </div>
+        <button id="closeDetail" class="btn icon">Close</button>
+      </div>
+      <div class="modal-body split">
+        <div class="detail-images">
+          <div class="image-block">
+            <div class="image-label">Before</div>
+            <img id="detailBefore" alt="Before capture">
+          </div>
+          <div id="afterBlock" class="image-block hidden">
+            <div class="image-label">After</div>
+            <img id="detailAfter" alt="After capture">
+          </div>
+        </div>
+        <div class="detail-meta">
+          <div class="meta-row"><span>Coordinates</span><span id="detailCoords"></span></div>
+          <div class="meta-row"><span>Address</span><span id="detailAddress"></span></div>
+          <div class="meta-row"><span>Tags</span><span id="detailTags"></span></div>
+          <div class="meta-row"><span>Reported</span><span id="detailDate"></span></div>
+          <div id="detailCleaned" class="meta-row hidden"><span>Cleaned</span><span id="detailCleanedDate"></span></div>
+          <div class="detail-actions">
+            <button id="markClean" class="btn primary">Mark as Cleaned</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="cleanModal" class="modal hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Cleanup Proof</div>
+          <div class="modal-sub">Capture an after photo to confirm cleanup.</div>
+        </div>
+        <button id="closeClean" class="btn icon">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="camera-frame">
+          <video id="cleanVideo" autoplay playsinline></video>
+          <img id="cleanPreview" class="hidden" alt="Cleanup preview">
+        </div>
+        <div class="camera-actions">
+          <button id="captureClean" class="btn primary">Capture After</button>
+          <button id="retakeClean" class="btn ghost hidden">Retake</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="submitClean" class="btn primary">Confirm Cleaned</button>
+        <button id="cancelClean" class="btn ghost">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="photosModal" class="modal hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card photos-card">
+      <div class="modal-header">
+        <div class="modal-title">Report Photos</div>
+        <button id="closePhotos" class="btn icon">Close</button>
+      </div>
+      <div class="photos-scroll">
+        <div class="photo-snap" id="photosBeforePane">
+          <div class="photo-snap-inner">
+            <div class="image-label">Before</div>
+            <img id="photosBefore" alt="Before" class="photos-img">
+          </div>
+        </div>
+        <div class="photo-snap hidden" id="photosAfterPane">
+          <div class="photo-snap-inner">
+            <div class="image-label">After</div>
+            <img id="photosAfter" alt="After" class="photos-img">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="reviewPanel" class="modal hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card wide">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">All Reports</div>
+          <div class="modal-sub">Browse and clean pollution reports.</div>
+        </div>
+        <button id="closeReview" class="btn icon">Close</button>
+      </div>
+      <div class="review-toolbar">
+        <button id="reviewFilterAll" class="btn ghost sort-active">All</button>
+        <button id="reviewFilterNearby" class="btn ghost">My Area (1 km)</button>
+      </div>
+      <div id="reviewList" class="review-list"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js?v=2"></script>
+</body>
+</html>
