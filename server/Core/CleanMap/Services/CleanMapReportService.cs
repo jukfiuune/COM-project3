@@ -1,9 +1,13 @@
 using System.Diagnostics;
 using Core.Observability;
 
+using Core.CleanMap.Interfaces;
+
 namespace Core.CleanMap;
 
-public sealed class CleanMapReportService(ICleanMapReportRepository repository) : ICleanMapReportService
+public sealed class CleanMapReportService(
+    ICleanMapReportRepository repository,
+    IAiDetectionService aiDetectionService) : ICleanMapReportService
 {
     public Task<IReadOnlyList<CleanMapReport>> GetAllAsync(CancellationToken cancellationToken)
     {
@@ -20,7 +24,6 @@ public sealed class CleanMapReportService(ICleanMapReportRepository repository) 
         CancellationToken cancellationToken)
     {
         using var activity = CleanMapObservability.ActivitySource.StartActivity("cleanmap.report.create");
-        activity?.SetTag("report.tags.count", request.Tags?.Count ?? 0);
         activity?.SetTag("report.has_photo_before", !string.IsNullOrWhiteSpace(request.PhotoBefore));
         activity?.SetTag("report.has_address", !string.IsNullOrWhiteSpace(request.Address));
 
@@ -32,7 +35,29 @@ public sealed class CleanMapReportService(ICleanMapReportRepository repository) 
             return CreateCleanMapReportResult.ValidationError(validationError);
         }
 
-        var report = await repository.CreateAsync(request, cancellationToken);
+        IReadOnlyList<TrashDetection> detections = [];
+        if (!string.IsNullOrWhiteSpace(request.PhotoBefore))
+        {
+            try
+            {
+                detections = await aiDetectionService.DetectTrashAsync(request.PhotoBefore, cancellationToken);
+                if (detections.Count == 0)
+                {
+                    const string noTrashError = "Image does not actually contain trash";
+                    activity?.SetStatus(ActivityStatusCode.Error, noTrashError);
+                    CleanMapObservability.ReportsCreateFailed.Add(1);
+                    return CreateCleanMapReportResult.ValidationError(noTrashError);
+                }
+            }
+            catch (Exception)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, "AI Detection Failed");
+                CleanMapObservability.ReportsCreateFailed.Add(1);
+                return CreateCleanMapReportResult.ValidationError("An error occurred");
+            }
+        }
+
+        var report = await repository.CreateAsync(request, detections, cancellationToken);
         CleanMapObservability.ReportsCreated.Add(1);
         return CreateCleanMapReportResult.Success(report);
     }
@@ -77,10 +102,7 @@ public sealed class CleanMapReportService(ICleanMapReportRepository repository) 
             return "Longitude must be between -180 and 180.";
         }
 
-        if (input.Tags is null || input.Tags.Count == 0)
-        {
-            return "At least one waste tag is required.";
-        }
+
 
         return null;
     }

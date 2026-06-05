@@ -1,13 +1,16 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CleanMap</title>
   <meta name="theme-color" content="#0b1119">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <div id="app">
     <header class="topbar">
@@ -85,14 +88,6 @@
           <label class="field-label">Address</label>
           <div id="addressDisplay" class="coord-pill address-display">Detecting address...</div>
 
-          <label class="field-label">Waste Types</label>
-          <div class="tag-grid">
-            <button class="tag-button" data-tag="Plastic">Plastic</button>
-            <button class="tag-button" data-tag="Organic">Organic</button>
-            <button class="tag-button" data-tag="Hazardous">Hazardous</button>
-            <button class="tag-button" data-tag="Construction">Construction</button>
-            <button class="tag-button" data-tag="Other">Other</button>
-          </div>
 
           <label class="field-label">Notes</label>
           <textarea id="notesInput" class="text-area" placeholder="Optional details"></textarea>
@@ -207,7 +202,7 @@
         <div class="brand-title">Welcome to CleanMap</div>
         <div class="brand-sub">Sign in or create an account to start reporting.</div>
       </div>
-      
+
       <div class="auth-tabs">
         <button id="tabLogin" class="auth-tab active">Login</button>
         <button id="tabSignup" class="auth-tab">Sign Up</button>
@@ -239,7 +234,8 @@
         </div>
         <div class="auth-field">
           <label for="signupPassword">Password</label>
-          <input type="password" id="signupPassword" class="text-input" placeholder="Min 8 chars, 1 letter, 1 number" minlength="8" required>
+          <input type="password" id="signupPassword" class="text-input" placeholder="Min 8 chars, 1 letter, 1 number"
+            minlength="8" required>
         </div>
         <div id="signupError" class="auth-error"></div>
         <button type="submit" id="submitSignup" class="btn primary auth-submit">Create Account</button>
@@ -269,8 +265,10 @@
   </div>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="app.js?v=3"></script>
   <script defer src="/_vercel/insights/script.js"></script>
 </body>
+
 </html>

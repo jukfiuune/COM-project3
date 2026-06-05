@@ -5,6 +5,9 @@ using Data.CleanMap;
 using Data.Teams;
 using System.Text;
 using Core.Configuration;
+using Core.CleanMap.Interfaces;
+using Core.CleanMap.Services;
+using Core.Configuration;
 using Core.Services;
 using Core.Repositories;
 using Data;
@@ -22,16 +25,27 @@ public static class ServiceCollectionExtensions
         services.AddCleanMapMongo(configuration);
         services.AddTeamsMongo();
         services.AddCleanMapAuth(configuration);
-        services.AddCleanMapServices();
+        services.AddCleanMapServices(configuration);
         services.AddTeamsServices();
         services.AddCleanMapCors();
 
         return services;
     }
 
-    private static IServiceCollection AddCleanMapServices(this IServiceCollection services)
+    private static IServiceCollection AddCleanMapServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<ICleanMapReportService, CleanMapReportService>();
+        
+        services.AddHttpClient<IAiDetectionService, AiDetectionService>(client =>
+        {
+            var baseUrl = configuration["AiServer:BaseUrl"];
+            if (!string.IsNullOrEmpty(baseUrl))
+            {
+                client.BaseAddress = new Uri(baseUrl);
+            }
+            client.Timeout = TimeSpan.FromSeconds(3);
+        });
+
         return services;
     }
 

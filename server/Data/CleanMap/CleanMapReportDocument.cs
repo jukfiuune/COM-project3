@@ -39,6 +39,31 @@ internal sealed class CleanMapReportDocument
 
     [BsonElement("cleanedAt")]
     public long? CleanedAt { get; init; }
+
+}
+
+internal sealed class TrashDetectionDocument
+{
+    [BsonElement("label")]
+    public string Label { get; init; } = string.Empty;
+
+    [BsonElement("confidence")]
+    public double Confidence { get; init; }
+
+    [BsonElement("x1")]
+    public int X1 { get; init; }
+
+    [BsonElement("y1")]
+    public int Y1 { get; init; }
+
+    [BsonElement("x2")]
+    public int X2 { get; init; }
+
+    [BsonElement("y2")]
+    public int Y2 { get; init; }
+
+    [BsonElement("clsId")]
+    public int ClsId { get; init; }
 }
 
 internal sealed class GeoJsonPointDocument

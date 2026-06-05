@@ -658,7 +658,7 @@ function resetReportForm() {
   elements.notesInput.value = '';
   elements.addressInput.textContent = 'Detecting address...';
 
-  document.querySelectorAll('.tag-button').forEach(btn => btn.classList.remove('selected'));
+  elements.addressInput.textContent = 'Detecting address...';
   elements.coordText.textContent = 'Locating...';
 }
 
@@ -874,18 +874,11 @@ async function submitReport() {
     return;
   }
 
-  const tags = Array.from(document.querySelectorAll('.tag-button.selected')).map(btn => btn.dataset.tag);
-  if (tags.length === 0) {
-    showToast('Select at least one waste type.');
-    return;
-  }
-
   const address = elements.addressInput.textContent.trim() === 'Detecting address...' ? '' : elements.addressInput.textContent.trim();
   const payload = {
     lat: state.currentLocation.lat,
     lng: state.currentLocation.lng,
     address,
-    tags,
     notes: elements.notesInput.value.trim(),
     photoBefore: state.reportPhoto
   };
@@ -901,7 +894,7 @@ async function submitReport() {
   try {
     await createReportApi(payload);
   } catch (err) {
-    showToast('Server not reachable.');
+    showToast(err.message || 'Server not reachable.');
     return;
   }
 
@@ -928,6 +921,10 @@ async function submitClean() {
       showToast('Marked as cleaned.');
       return;
     } catch (err) {
+      if (err.message && !err.message.includes('fetch') && !err.message.includes('NetworkError')) {
+        showToast(err.message);
+        return;
+      }
       state.apiEnabled = false;
       state.apiBase = null;
       showToast('Server not reachable. Saved locally.');
@@ -1041,9 +1038,7 @@ function bindUI() {
   });
   elements.closePhotos.addEventListener('click', closePhotosModal);
 
-  document.querySelectorAll('.tag-button').forEach(btn => {
-    btn.addEventListener('click', () => btn.classList.toggle('selected'));
-  });
+
 
   // Auth bindings
   elements.loginBtn.addEventListener('click', () => auth.showLogin());
