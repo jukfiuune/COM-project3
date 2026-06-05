@@ -268,6 +268,15 @@ html, body {
 
 .modal-card.wide {
   width: min(1100px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.modal-card.wide .modal-header,
+.modal-card.wide .review-toolbar {
+  flex-shrink: 0;
 }
 
 .modal-header {
@@ -338,6 +347,14 @@ html, body {
   border: 1px solid rgba(130, 190, 235, 0.35);
   font-size: 13px;
   color: var(--muted);
+}
+
+.address-display {
+  border-radius: 12px;
+  width: 100%;
+  display: block;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .tag-grid {
@@ -567,4 +584,179 @@ html, body {
     animation: none !important;
     transition: none !important;
   }
+}
+
+.review-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+.sort-active {
+  border-color: rgba(64, 201, 255, 0.6) !important;
+  color: var(--text) !important;
+  background: rgba(64, 201, 255, 0.1) !important;
+}
+
+.review-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  
+  height: 60vh !important;
+  min-height: 460px !important;
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+  
+  scroll-snap-type: y mandatory !important;
+  -webkit-overflow-scrolling: touch !important;
+  scroll-behavior: smooth !important;
+}
+
+.review-empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 28px 0;
+  font-size: 14px;
+}
+
+.review-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 24px !important;
+  margin: 0 !important;
+  
+  background: #0e1622 !important; 
+  border: none !important;
+  border-bottom: 1px solid rgba(110, 160, 210, 0.15) !important;
+  border-radius: 0 !important;
+  cursor: pointer;
+  
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  flex: 0 0 100% !important;
+  box-sizing: border-box !important;
+  
+  scroll-snap-align: start !important;
+  scroll-snap-stop: always !important;
+}
+
+.review-item:hover {
+  background: #142030 !important;
+}
+
+.review-thumb {
+  width: 100% !important;
+  height: 55% !important;
+  max-height: 270px !important;
+  object-fit: cover !important;
+  border-radius: 12px !important;
+  background: #0a101a !important;
+  flex-shrink: 0 !important;
+}
+
+.review-info {
+  width: 100% !important;
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-grow: 1 !important;
+}
+
+.review-title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  color: var(--text) !important;
+}
+
+.review-meta {
+  font-size: 13px !important;
+  color: var(--muted) !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.review-badge {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 6px 18px !important;
+  border-radius: 999px !important;
+  margin-top: 4px !important;
+  display: inline-block !important;
+}
+
+.review-badge.dirty {
+  background: rgba(255, 77, 109, 0.15) !important;
+  color: var(--neon-red) !important;
+  border: 1px solid rgba(255, 77, 109, 0.4) !important;
+}
+
+.review-badge.cleaned {
+  background: rgba(53, 227, 159, 0.15) !important;
+  color: var(--neon-green) !important;
+  border: 1px solid rgba(53, 227, 159, 0.4) !important;
+}
+
+.review-actions {
+  display: none !important;
+}
+
+.photos-card {
+  width: min(600px, 100%);
+  height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.photos-card .modal-header {
+  flex-shrink: 0;
+}
+
+.photos-scroll {
+  flex: 1;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
+
+.photo-snap {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  height: 100%;
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 4px 8px 0;
+  box-sizing: border-box;
+}
+
+.photo-snap-inner {
+  width: 100%;
+  background: rgba(6, 10, 16, 0.8);
+  border: 1px solid rgba(120, 180, 220, 0.25);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.photos-img {
+  width: 100%;
+  border-radius: 12px !important;
+  margin-top: 8px;
+  display: block;
+  object-fit: contain;
+  max-height: calc(92vh - 120px);
 }

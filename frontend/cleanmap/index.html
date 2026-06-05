@@ -56,7 +56,7 @@
       </div>
       <div class="panel-actions">
         <button id="reportBtnBottom" class="btn primary">New Report</button>
-        <button id="reviewBtn" class="btn ghost">Review Latest</button>
+        <button id="reviewBtn" class="btn ghost">Review All</button>
       </div>
     </section>
   </div>
@@ -76,10 +76,7 @@
           <div id="coordText" class="coord-pill">Locating...</div>
 
           <label class="field-label">Address</label>
-          <div class="address-row">
-            <input id="addressInput" class="text-input" placeholder="Street, city, or neighborhood">
-            <button id="addressBtn" class="btn ghost">My Address</button>
-          </div>
+          <div id="addressDisplay" class="coord-pill address-display">Detecting address...</div>
 
           <label class="field-label">Waste Types</label>
           <div class="tag-grid">
@@ -170,6 +167,46 @@
         <button id="submitClean" class="btn primary">Confirm Cleaned</button>
         <button id="cancelClean" class="btn ghost">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <div id="photosModal" class="modal hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card photos-card">
+      <div class="modal-header">
+        <div class="modal-title">Report Photos</div>
+        <button id="closePhotos" class="btn icon">Close</button>
+      </div>
+      <div class="photos-scroll">
+        <div class="photo-snap" id="photosBeforePane">
+          <div class="photo-snap-inner">
+            <div class="image-label">Before</div>
+            <img id="photosBefore" alt="Before" class="photos-img">
+          </div>
+        </div>
+        <div class="photo-snap hidden" id="photosAfterPane">
+          <div class="photo-snap-inner">
+            <div class="image-label">After</div>
+            <img id="photosAfter" alt="After" class="photos-img">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="reviewPanel" class="modal hidden" aria-hidden="true" role="dialog">
+    <div class="modal-card wide">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">All Reports</div>
+          <div class="modal-sub">Browse and clean pollution reports.</div>
+        </div>
+        <button id="closeReview" class="btn icon">Close</button>
+      </div>
+      <div class="review-toolbar">
+        <button id="reviewFilterAll" class="btn ghost sort-active">All</button>
+        <button id="reviewFilterNearby" class="btn ghost">My Area (1 km)</button>
+      </div>
+      <div id="reviewList" class="review-list"></div>
     </div>
   </div>
 

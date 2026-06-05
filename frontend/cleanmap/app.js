@@ -11,7 +11,8 @@ const state = {
   activeReportId: null,
   userMarker: null,
   apiBase: null,
-  apiEnabled: false
+  apiEnabled: false,
+  clusterLayers: []
 };
 
 const elements = {
@@ -29,8 +30,8 @@ const elements = {
   cleanModal: document.getElementById('cleanModal'),
   detailModal: document.getElementById('detailModal'),
   coordText: document.getElementById('coordText'),
-  addressInput: document.getElementById('addressInput'),
-  addressBtn: document.getElementById('addressBtn'),
+  addressInput: document.getElementById('addressDisplay'),
+  addressBtn: null,
   notesInput: document.getElementById('notesInput'),
   reportVideo: document.getElementById('reportVideo'),
   reportPreview: document.getElementById('reportPreview'),
@@ -59,7 +60,17 @@ const elements = {
   submitClean: document.getElementById('submitClean'),
   cancelClean: document.getElementById('cancelClean'),
   closeClean: document.getElementById('closeClean'),
-  toast: document.getElementById('toast')
+  toast: document.getElementById('toast'),
+  reviewPanel: document.getElementById('reviewPanel'),
+  closeReview: document.getElementById('closeReview'),
+  reviewList: document.getElementById('reviewList'),
+  reviewFilterAll: document.getElementById('reviewFilterAll'),
+  reviewFilterNearby: document.getElementById('reviewFilterNearby'),
+  photosModal: document.getElementById('photosModal'),
+  closePhotos: document.getElementById('closePhotos'),
+  photosBefore: document.getElementById('photosBefore'),
+  photosAfter: document.getElementById('photosAfter'),
+  photosAfterPane: document.getElementById('photosAfterPane')
 };
 
 function loadDB() {
@@ -88,6 +99,7 @@ function buildApiCandidates() {
   const stored = localStorage.getItem(`${storageKey}_api`);
   const candidates = [
     stored,
+    'http://localhost:5432',
     'http://localhost:5210',
     'https://localhost:7210',
     'http://localhost:5000',
@@ -141,7 +153,6 @@ async function syncFromApi() {
       saveDB();
       renderMarkers();
       updateProgress();
-      showToast('Connected to CleanMap server.');
     }
   } catch (err) {
     state.apiEnabled = false;
@@ -154,7 +165,7 @@ async function createReportApi(report) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(report)
-  });
+  }, 30000);
 }
 
 async function markCleanApi(reportId, payload) {
@@ -162,7 +173,7 @@ async function markCleanApi(reportId, payload) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
-  });
+  }, 30000);
 }
 
 function initMap() {
@@ -199,15 +210,90 @@ function makeIcon(status) {
 }
 
 function addMarker(report) {
-  const marker = L.marker([report.lat, report.lng], { icon: makeIcon(report.status) }).addTo(state.map);
+  const zIndex = report.status === 'cleaned' ? 100 : 500;
+  const marker = L.marker([report.lat, report.lng], {
+    icon: makeIcon(report.status),
+    zIndexOffset: zIndex
+  }).addTo(state.map);
   marker.on('click', () => openDetail(report.id));
   state.markers.set(report.id, marker);
+}
+
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function computeClusters(reports) {
+  const CLUSTER_RADIUS_M = 150;
+  const MIN_CLUSTER_SIZE = 3;
+  const dirty = reports.filter(r => r.status !== 'cleaned');
+  const visited = new Set();
+  const clusters = [];
+
+  for (let i = 0; i < dirty.length; i++) {
+    if (visited.has(i)) continue;
+    const group = [i];
+    for (let j = i + 1; j < dirty.length; j++) {
+      if (visited.has(j)) continue;
+      if (haversineDistance(dirty[i].lat, dirty[i].lng, dirty[j].lat, dirty[j].lng) <= CLUSTER_RADIUS_M) {
+        group.push(j);
+      }
+    }
+    if (group.length >= MIN_CLUSTER_SIZE) {
+      group.forEach(idx => visited.add(idx));
+      const avgLat = group.reduce((s, idx) => s + dirty[idx].lat, 0) / group.length;
+      const avgLng = group.reduce((s, idx) => s + dirty[idx].lng, 0) / group.length;
+      const maxDist = Math.max(...group.map(idx =>
+        haversineDistance(avgLat, avgLng, dirty[idx].lat, dirty[idx].lng)));
+      clusters.push({
+        lat: avgLat,
+        lng: avgLng,
+        radius: Math.max(maxDist + 40, 80),
+        ids: new Set(group.map(idx => dirty[idx].id))
+      });
+    }
+  }
+
+  const clusteredIds = new Set(clusters.flatMap(c => [...c.ids]));
+  return { clusters, clusteredIds };
 }
 
 function renderMarkers() {
   state.markers.forEach(marker => marker.remove());
   state.markers.clear();
-  state.db.reports.forEach(addMarker);
+  state.clusterLayers.forEach(l => l.remove());
+  state.clusterLayers = [];
+
+  const { clusters, clusteredIds } = computeClusters(state.db.reports);
+
+  clusters.forEach(cluster => {
+    const circle = L.circle([cluster.lat, cluster.lng], {
+      radius: cluster.radius,
+      color: '#ff4d6d',
+      fillColor: '#ff4d6d',
+      fillOpacity: 0.25,
+      weight: 2,
+      opacity: 0.7
+    }).addTo(state.map);
+    state.clusterLayers.push(circle);
+  });
+
+  const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+
+  state.db.reports.forEach(report => {
+    if (clusteredIds.has(report.id)) return;
+    if (report.status === 'cleaned') {
+      const cleanedAt = report.cleanedAt || report.createdAt;
+      if (now - cleanedAt > ONE_WEEK_MS) return;
+    }
+    addMarker(report);
+  });
 }
 
 function updateProgress() {
@@ -224,6 +310,27 @@ function updateProgress() {
   elements.dirtyCount.textContent = dirty;
 }
 
+async function reverseGeocode(lat, lng) {
+  try {
+    const data = await fetchJson(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+      { headers: { 'Accept-Language': 'en' } },
+      5000
+    );
+    if (!data || !data.address) return null;
+    const a = data.address;
+    const parts = [
+      a.road || a.pedestrian || a.footway || a.path,
+      a.house_number,
+      a.suburb || a.neighbourhood || a.quarter,
+      a.city || a.town || a.village || a.municipality
+    ].filter(Boolean);
+    return parts.join(', ') || data.display_name || null;
+  } catch {
+    return null;
+  }
+}
+
 function setLocation(lat, lng, panMap) {
   state.currentLocation = { lat, lng };
   elements.coordText.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -237,6 +344,14 @@ function setLocation(lat, lng, panMap) {
     }).addTo(state.map);
   } else {
     state.userMarker.setLatLng([lat, lng]);
+  }
+
+  const reportModalOpen = !elements.reportModal.classList.contains('hidden');
+  if (reportModalOpen) {
+    elements.addressInput.textContent = 'Detecting address...';
+    reverseGeocode(lat, lng).then(addr => {
+      elements.addressInput.textContent = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    });
   }
 }
 
@@ -265,22 +380,31 @@ function locateUser(panMap) {
   );
 }
 
-function startCamera(videoEl) {
-  stopCamera();
+async function attachCamera(videoEl) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showToast('Camera requires https or localhost.');
-    return Promise.resolve();
+    return;
   }
-  return navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: 'environment' } },
-    audio: false
-  }).then(stream => {
-    state.currentStream = stream;
-    videoEl.srcObject = stream;
-    return videoEl.play();
-  }).catch(() => {
-    showToast('Camera unavailable.');
-  });
+  const isAlive = state.currentStream &&
+    state.currentStream.getTracks().every(t => t.readyState === 'live');
+  if (!isAlive) {
+    try {
+      state.currentStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+    } catch {
+      showToast('Camera unavailable.');
+      return;
+    }
+  }
+  videoEl.srcObject = state.currentStream;
+  await videoEl.play().catch(() => {});
+}
+
+function releaseCamera(videoEl) {
+  videoEl.pause();
+  videoEl.srcObject = null;
 }
 
 function stopCamera() {
@@ -321,7 +445,7 @@ function resetReportForm() {
   elements.retakeReport.classList.add('hidden');
   elements.captureReport.classList.remove('hidden');
   elements.notesInput.value = '';
-  elements.addressInput.value = localStorage.getItem(`${storageKey}_address`) || '';
+  elements.addressInput.textContent = 'Detecting address...';
 
   document.querySelectorAll('.tag-button').forEach(btn => btn.classList.remove('selected'));
   elements.coordText.textContent = 'Locating...';
@@ -341,11 +465,11 @@ function openReportModal() {
   resetReportForm();
   openModal(elements.reportModal);
   locateUser(true);
-  startCamera(elements.reportVideo);
+  void attachCamera(elements.reportVideo);
 }
 
 function closeReportModal() {
-  stopCamera();
+  releaseCamera(elements.reportVideo);
   closeModal(elements.reportModal);
 }
 
@@ -381,19 +505,131 @@ function closeDetailModal() {
   closeModal(elements.detailModal);
 }
 
+function openPhotosModal(report) {
+  elements.photosBefore.src = report.photoBefore || '';
+  if (report.photoAfter) {
+    elements.photosAfter.src = report.photoAfter;
+    elements.photosAfterPane.classList.remove('hidden');
+  } else {
+    elements.photosAfterPane.classList.add('hidden');
+  }
+  openModal(elements.photosModal);
+  const scroll = elements.photosModal.querySelector('.photos-scroll');
+  if (scroll) scroll.scrollTop = 0;
+}
+
+function closePhotosModal() {
+  closeModal(elements.photosModal);
+}
+
+let reviewFilter = 'all';
+
+function openReviewPanel() {
+  renderReviewList();
+  openModal(elements.reviewPanel);
+}
+
+function closeReviewPanel() {
+  closeModal(elements.reviewPanel);
+}
+
+function renderReviewList() {
+  let reports = [...state.db.reports].sort((a, b) => b.createdAt - a.createdAt);
+
+  if (reviewFilter === 'nearby' && state.currentLocation) {
+    reports = reports.filter(r =>
+      haversineDistance(state.currentLocation.lat, state.currentLocation.lng, r.lat, r.lng) <= 1000
+    );
+  }
+
+  elements.reviewList.innerHTML = '';
+
+  if (reports.length === 0) {
+    elements.reviewList.innerHTML = '<div class="review-empty">No reports found.</div>';
+    return;
+  }
+
+  reports.forEach(report => {
+    const item = document.createElement('div');
+    item.className = 'review-item';
+
+    const distM = state.currentLocation
+      ? Math.round(haversineDistance(state.currentLocation.lat, state.currentLocation.lng, report.lat, report.lng))
+      : null;
+
+    item.innerHTML = `
+      <img class="review-thumb" src="" alt="">
+      <div class="review-info">
+        <div class="review-title"></div>
+        <div class="review-meta tags-meta"></div>
+        <div class="review-meta date-meta"></div>
+      </div>
+      <span class="review-badge"></span>
+    `;
+
+    item.querySelector('img').src = (report.status === 'cleaned' ? report.photoAfter : null) || report.photoBefore || '';
+    item.querySelector('.review-title').textContent = report.address || 'No address';
+    item.querySelector('.tags-meta').textContent =
+      (distM !== null ? `${distM}m away · ` : '') + (report.tags?.join(', ') || 'No tags');
+    item.querySelector('.date-meta').textContent = formatDate(report.createdAt);
+
+    const badge = item.querySelector('.review-badge');
+    badge.textContent = report.status === 'cleaned' ? 'Cleaned' : 'Dirty';
+    badge.classList.add(report.status);
+
+    item.addEventListener('click', () => {
+      closeReviewPanel();
+      openDetail(report.id);
+    });
+
+    elements.reviewList.appendChild(item);
+  });
+}
+
 function openCleanModal(reportId) {
-  state.activeReportId = reportId;
-  state.cleanPhoto = null;
-  elements.cleanPreview.classList.add('hidden');
-  elements.cleanVideo.classList.remove('hidden');
-  elements.retakeClean.classList.add('hidden');
-  elements.captureClean.classList.remove('hidden');
-  openModal(elements.cleanModal);
-  startCamera(elements.cleanVideo);
+  const report = state.db.reports.find(r => r.id === reportId);
+  if (!report) return;
+
+  const proceed = (loc) => {
+    const dist = haversineDistance(loc.lat, loc.lng, report.lat, report.lng);
+    if (dist > 100) {
+      showToast(`Too far from report (${Math.round(dist)}m away). Must be within 20m.`);
+      return;
+    }
+    state.activeReportId = reportId;
+    state.cleanPhoto = null;
+    elements.cleanPreview.classList.add('hidden');
+    elements.cleanVideo.classList.remove('hidden');
+    elements.retakeClean.classList.add('hidden');
+    elements.captureClean.classList.remove('hidden');
+    openModal(elements.cleanModal);
+    void attachCamera(elements.cleanVideo);
+  };
+
+  if (state.currentLocation) {
+    proceed(state.currentLocation);
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    showToast('Geolocation not supported.');
+    return;
+  }
+
+  showToast('Getting your location...');
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setLocation(loc.lat, loc.lng, false);
+      proceed(loc);
+    },
+    () => showToast('Location unavailable. Enable GPS and try again.'),
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+  );
 }
 
 function closeCleanModal() {
-  stopCamera();
+  releaseCamera(elements.cleanVideo);
   closeModal(elements.cleanModal);
   state.activeReportId = null;
 }
@@ -419,38 +655,33 @@ async function submitReport() {
     return;
   }
 
-  const address = elements.addressInput.value.trim();
-  const report = {
-    id: `rep_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+  const address = elements.addressInput.textContent.trim() === 'Detecting address...' ? '' : elements.addressInput.textContent.trim();
+  const payload = {
     lat: state.currentLocation.lat,
     lng: state.currentLocation.lng,
     address,
     tags,
     notes: elements.notesInput.value.trim(),
-    status: 'dirty',
-    photoBefore: state.reportPhoto,
-    photoAfter: null,
-    createdAt: Date.now(),
-    cleanedAt: null
+    photoBefore: state.reportPhoto
   };
 
-  let savedReport = report;
-  if (state.apiEnabled) {
-    try {
-      const apiReport = await createReportApi(report);
-      if (apiReport) savedReport = apiReport;
-    } catch (err) {
-      state.apiEnabled = false;
-      state.apiBase = null;
-      showToast('Server not reachable. Saved locally.');
+  if (!state.apiEnabled) {
+    const found = await detectApiBase();
+    if (!found) {
+      showToast('Server not reachable.');
+      return;
     }
   }
 
-  state.db.reports.push(savedReport);
-  saveDB();
-  addMarker(savedReport);
-  updateProgress();
+  try {
+    await createReportApi(payload);
+  } catch (err) {
+    showToast('Server not reachable.');
+    return;
+  }
+
   closeReportModal();
+  await syncFromApi();
   showToast('Report saved.');
 }
 
@@ -465,12 +696,12 @@ async function submitClean() {
 
   if (state.apiEnabled) {
     try {
-      const updated = await markCleanApi(report.id, { photoAfter: state.cleanPhoto });
-      if (updated) {
-        report.status = updated.status;
-        report.photoAfter = updated.photoAfter;
-        report.cleanedAt = updated.cleanedAt;
-      }
+      await markCleanApi(report.id, { photoAfter: state.cleanPhoto });
+      closeCleanModal();
+      closeDetailModal();
+      await syncFromApi();
+      showToast('Marked as cleaned.');
+      return;
     } catch (err) {
       state.apiEnabled = false;
       state.apiBase = null;
@@ -478,16 +709,14 @@ async function submitClean() {
     }
   }
 
-  if (!state.apiEnabled || report.status !== 'cleaned') {
-    report.status = 'cleaned';
-    report.photoAfter = state.cleanPhoto;
-    report.cleanedAt = Date.now();
-  }
+  report.status = 'cleaned';
+  report.photoAfter = state.cleanPhoto;
+  report.cleanedAt = Date.now();
 
   saveDB();
 
   const marker = state.markers.get(report.id);
-  if (marker) marker.setIcon(makeIcon('cleaned'));
+  if (marker) { marker.remove(); state.markers.delete(report.id); }
 
   updateProgress();
   closeCleanModal();
@@ -499,24 +728,38 @@ function bindUI() {
   elements.reportBtn.addEventListener('click', openReportModal);
   elements.reportBtnBottom.addEventListener('click', openReportModal);
   elements.locateBtn.addEventListener('click', () => locateUser(true));
-  elements.reviewBtn.addEventListener('click', () => {
-    const latest = state.db.reports[state.db.reports.length - 1];
-    if (latest) openDetail(latest.id);
-    else showToast('No reports yet.');
+  elements.reviewBtn.addEventListener('click', openReviewPanel);
+  elements.closeReview.addEventListener('click', closeReviewPanel);
+  elements.reviewFilterAll.addEventListener('click', () => {
+    reviewFilter = 'all';
+    elements.reviewFilterAll.classList.add('sort-active');
+    elements.reviewFilterNearby.classList.remove('sort-active');
+    renderReviewList();
   });
-
-  elements.addressBtn.addEventListener('click', () => {
-    if (elements.addressInput.value.trim()) {
-      localStorage.setItem(`${storageKey}_address`, elements.addressInput.value.trim());
-      showToast('Address stored for reuse.');
+  elements.reviewFilterNearby.addEventListener('click', () => {
+    if (!state.currentLocation) {
+      if (!navigator.geolocation) {
+        showToast('Geolocation not supported.');
+        return;
+      }
+      showToast('Getting your location...');
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setLocation(pos.coords.latitude, pos.coords.longitude, false);
+          reviewFilter = 'nearby';
+          elements.reviewFilterNearby.classList.add('sort-active');
+          elements.reviewFilterAll.classList.remove('sort-active');
+          renderReviewList();
+        },
+        () => showToast('Location unavailable. Enable GPS and try again.'),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+      );
       return;
     }
-    const stored = localStorage.getItem(`${storageKey}_address`) || '';
-    const promptValue = window.prompt('Enter your address', stored);
-    if (promptValue) {
-      elements.addressInput.value = promptValue;
-      localStorage.setItem(`${storageKey}_address`, promptValue);
-    }
+    reviewFilter = 'nearby';
+    elements.reviewFilterNearby.classList.add('sort-active');
+    elements.reviewFilterAll.classList.remove('sort-active');
+    renderReviewList();
   });
 
   elements.captureReport.addEventListener('click', () => {
@@ -528,7 +771,6 @@ function bindUI() {
     elements.reportVideo.classList.add('hidden');
     elements.captureReport.classList.add('hidden');
     elements.retakeReport.classList.remove('hidden');
-    stopCamera();
   });
 
   elements.retakeReport.addEventListener('click', () => {
@@ -537,7 +779,7 @@ function bindUI() {
     elements.reportVideo.classList.remove('hidden');
     elements.captureReport.classList.remove('hidden');
     elements.retakeReport.classList.add('hidden');
-    startCamera(elements.reportVideo);
+    void attachCamera(elements.reportVideo);
   });
 
   elements.submitReport.addEventListener('click', () => { void submitReport(); });
@@ -553,7 +795,6 @@ function bindUI() {
     elements.cleanVideo.classList.add('hidden');
     elements.captureClean.classList.add('hidden');
     elements.retakeClean.classList.remove('hidden');
-    stopCamera();
   });
 
   elements.retakeClean.addEventListener('click', () => {
@@ -562,7 +803,7 @@ function bindUI() {
     elements.cleanVideo.classList.remove('hidden');
     elements.captureClean.classList.remove('hidden');
     elements.retakeClean.classList.add('hidden');
-    startCamera(elements.cleanVideo);
+    void attachCamera(elements.cleanVideo);
   });
 
   elements.submitClean.addEventListener('click', () => { void submitClean(); });
@@ -573,6 +814,7 @@ function bindUI() {
   elements.markClean.addEventListener('click', () => {
     openCleanModal(elements.markClean.dataset.reportId);
   });
+  elements.closePhotos.addEventListener('click', closePhotosModal);
 
   document.querySelectorAll('.tag-button').forEach(btn => {
     btn.addEventListener('click', () => btn.classList.toggle('selected'));
@@ -586,6 +828,8 @@ async function init() {
   renderMarkers();
   updateProgress();
   await syncFromApi();
+  if (state.apiEnabled) showToast('Connected to CleanMap server.');
+  window.addEventListener('beforeunload', stopCamera);
 }
 
 document.addEventListener('DOMContentLoaded', init);
