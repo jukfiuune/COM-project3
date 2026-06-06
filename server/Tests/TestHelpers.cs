@@ -1,6 +1,7 @@
+using MongoDB.Bson;
 using Core.Repositories;
 using Core.Teams;
-using Core.Users;
+using Core.Entities;
 
 namespace Tests;
 
@@ -20,16 +21,9 @@ public sealed class FakeUserRepository : IUserRepository
         return Task.FromResult(user);
     }
 
-    public Task<User?> GetByIdAsync(string id)
-    {
-        var user = _users.FirstOrDefault(u => u.Id == id);
-        return Task.FromResult(user);
-    }
-
-    // Added overload to satisfy IUserRepository which expects ObjectId
     public Task<User?> GetByIdAsync(ObjectId id)
     {
-        var user = _users.FirstOrDefault(u => u.Id == id.ToString());
+        var user = _users.FirstOrDefault(u => u.Id == id);
         return Task.FromResult(user);
     }
 
@@ -42,9 +36,9 @@ public sealed class FakeUserRepository : IUserRepository
     public Task<User> CreateAsync(User user)
     {
         var copy = CopyUser(user);
-        if (string.IsNullOrWhiteSpace(copy.Id))
+        if (copy.Id == ObjectId.Empty)
         {
-            copy.Id = Guid.NewGuid().ToString();
+            copy.Id = ObjectId.GenerateNewId();
         }
 
         _users.Add(copy);
@@ -66,7 +60,11 @@ public sealed class FakeUserRepository : IUserRepository
 
     public Task<bool> ExistsByIdAsync(string id)
     {
-        var exists = _users.Any(u => u.Id == id);
+        if (!ObjectId.TryParse(id, out var objectId))
+        {
+            return Task.FromResult(false);
+        }
+        var exists = _users.Any(u => u.Id == objectId);
         return Task.FromResult(exists);
     }
 

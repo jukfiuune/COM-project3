@@ -1,7 +1,8 @@
 using Core.Configuration;
 using Core.DTOs;
 using Core.Services;
-using Core.Users;
+using Core.Entities;
+using MongoDB.Bson;
 using Xunit;
 
 namespace Tests;
@@ -81,7 +82,7 @@ public sealed class AuthServiceTests
         var repo = new FakeUserRepository();
         var createdUser = new User
         {
-            Id = "user-1",
+            Id = ObjectId.GenerateNewId(),
             Username = "user123",
             Email = "user@example.com",
             PasswordHash = _passwordService.Hash("Password1"),
@@ -107,7 +108,7 @@ public sealed class AuthServiceTests
         var repo = new FakeUserRepository();
         var createdUser = new User
         {
-            Id = "user-2",
+            Id = ObjectId.GenerateNewId(),
             Username = "user123",
             Email = "user@example.com",
             PasswordHash = _passwordService.Hash("Password1"),

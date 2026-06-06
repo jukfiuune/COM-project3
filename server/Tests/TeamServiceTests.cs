@@ -1,7 +1,8 @@
 using Core.Services;
 using Core.Teams;
 using Core.Teams.Services;
-using Core.Users;
+using Core.Entities;
+using MongoDB.Bson;
 using Xunit;
 
 namespace Tests;
@@ -12,7 +13,7 @@ public sealed class TeamServiceTests
     public async Task AddMemberAsync_ReturnsSuccess_WhenOwnerAddsExistingUserByUsername()
     {
         var ownerId = "owner-1";
-        var userId = "user-123";
+        var userId = ObjectId.GenerateNewId();
         var team = CreateTeam(ownerId);
         var userRepo = new FakeUserRepository(new[]
         {
@@ -28,7 +29,7 @@ public sealed class TeamServiceTests
 
         var updatedTeam = await teamRepo.GetByIdAsync(team.Id, CancellationToken.None);
         Assert.NotNull(updatedTeam);
-        Assert.Contains(updatedTeam!.Members, m => m.UserId == userId && m.Role == TeamRole.Member);
+        Assert.Contains(updatedTeam!.Members, m => m.UserId == userId.ToString() && m.Role == TeamRole.Member);
     }
 
     [Fact]
@@ -53,7 +54,7 @@ public sealed class TeamServiceTests
         var team = CreateTeam(ownerId);
         var userRepo = new FakeUserRepository(new[]
         {
-            new User { Id = "user-456", Username = "456", Email = "456@example.com" }
+            new User { Id = ObjectId.GenerateNewId(), Username = "456", Email = "456@example.com" }
         });
         var teamRepo = new FakeTeamRepository(new[] { team });
         var service = new TeamService(teamRepo, userRepo);
