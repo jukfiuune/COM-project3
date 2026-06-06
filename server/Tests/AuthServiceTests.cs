@@ -26,7 +26,7 @@ public sealed class AuthServiceTests
     public async Task SignupAsync_ReturnsError_WhenEmailIsInvalid()
     {
         var repo = new FakeUserRepository();
-        var service = new AuthService(repo, _passwordService, _tokenService);
+        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
 
         var (response, error) = await service.SignupAsync(new SignupRequest
         {
@@ -43,7 +43,7 @@ public sealed class AuthServiceTests
     public async Task SignupAsync_ReturnsError_WhenPasswordIsWeak()
     {
         var repo = new FakeUserRepository();
-        var service = new AuthService(repo, _passwordService, _tokenService);
+        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
 
         var (response, error) = await service.SignupAsync(new SignupRequest
         {
@@ -60,7 +60,7 @@ public sealed class AuthServiceTests
     public async Task SignupAsync_ReturnsAuthResponse_WhenValid()
     {
         var repo = new FakeUserRepository();
-        var service = new AuthService(repo, _passwordService, _tokenService);
+        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
 
         var (response, error) = await service.SignupAsync(new SignupRequest
         {
@@ -90,9 +90,9 @@ public sealed class AuthServiceTests
         };
 
         await repo.CreateAsync(createdUser);
-        var service = new AuthService(repo, _passwordService, _tokenService);
+        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
 
-        var (response, error) = await service.LoginAsync(new LoginRequest
+        var (response, refreshToken, error) = await service.LoginAsync(new LoginRequest
         {
             Email = "user@example.com",
             Password = "wrong-password"
@@ -116,9 +116,9 @@ public sealed class AuthServiceTests
         };
 
         await repo.CreateAsync(createdUser);
-        var service = new AuthService(repo, _passwordService, _tokenService);
+        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
 
-        var (response, error) = await service.LoginAsync(new LoginRequest
+        var (response, refreshToken, error) = await service.LoginAsync(new LoginRequest
         {
             Email = "user@example.com",
             Password = "Password1"
