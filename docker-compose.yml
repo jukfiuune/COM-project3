@@ -1,18 +1,24 @@
 services:
-  nexora-api:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "5087:8080"
+      - "5432:5432"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - MongoDB__ConnectionString=${MONGODB_CONNECTION_STRING}
-      - MongoDB__DatabaseName=nexora
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
+      - CleanMapDatabase__ConnectionString=mongodb://mongo:27017
+      - CleanMapDatabase__DatabaseName=nexora
+      - AiServer__Url=http://195.68.215.115:9000
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

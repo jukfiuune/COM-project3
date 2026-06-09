@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teams — Nexora</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12'%3EN%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="teams.css" />
+</head>
+<body class="teams-page">
+
+<nav class="teams-nav">
+  <div class="teams-nav-left">
+    <a class="back-btn" href="index.html" title="Back to Map">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+    </a>
+    <span class="teams-nav-logo">Nexora</span>
+    <span class="nav-separator">/</span>
+    <span class="teams-nav-title">Teams</span>
+  </div>
+  <button class="btn primary" id="btnOpenCreateModal">+ New Team</button>
+</nav>
+
+<main class="teams-main">
+  <div class="teams-header">
+    <h1>My <span class="accent">Teams</span></h1>
+    <p class="teams-subtitle">Collaborate to keep your area clean</p>
+  </div>
+
+  <div class="user-bar auth-bar">
+    <div>
+      <span id="currentUserLabel" class="user-label"></span>
+      <p class="user-note">Create and manage your teams.</p>
+    </div>
+  </div>
+
+  <div id="teamsContainer" class="teams-grid-wrap">
+    <div class="teams-loading"><div class="spinner"></div></div>
+  </div>
+</main>
+
+<!-- Create Team Modal -->
+<div class="t-overlay" id="createModal">
+  <div class="t-modal">
+    <div class="t-modal-header">
+      <h2>Create a New Team</h2>
+      <button class="close-btn" id="btnCloseCreateModal">✕</button>
+    </div>
+    <div class="form-row">
+      <label>Team Name *</label>
+      <input type="text" id="teamName" placeholder="e.g. Green Warriors" maxlength="100" />
+    </div>
+    <div class="form-row">
+      <label>Description</label>
+      <textarea id="teamDesc" placeholder="What does your team do?"></textarea>
+    </div>
+    <div class="t-modal-actions">
+      <button class="btn ghost" id="btnCancelCreateModal">Cancel</button>
+      <button class="btn primary" id="btnConfirmCreateTeam">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script type="module" src="teams.js"></script>
+</body>
+</html>

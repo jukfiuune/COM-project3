@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — Nexora</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12'%3EN%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="auth-page">
+  <header class="topbar" style="max-width: 960px; margin: 0 auto; top: 20px; left: 20px; right: 20px;">
+    <div class="brand">
+      <div class="brand-title">Nexora</div>
+    </div>
+    <div class="top-actions">
+      <a href="index.html" class="btn ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Back to Map
+      </a>
+    </div>
+  </header>
+
+    <section class="auth-card">
+      <h1>Sign In or Create Account</h1>
+      <p>Login before reporting pollution or managing teams.</p>
+
+      <div class="auth-toggle">
+        <button id="tabLogin" class="active">Login</button>
+        <button id="tabSignup">Sign Up</button>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" placeholder="you@example.com" required />
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" type="password" placeholder="Your password" required />
+        <button type="button" id="submitLogin" class="btn primary">Login</button>
+        <div id="loginError" class="auth-error"></div>
+      </form>
+
+      <form id="signupForm" class="auth-form hidden">
+        <label for="signupUsername">Username</label>
+        <input id="signupUsername" type="text" placeholder="Your username" minlength="3" required />
+        <label for="signupEmail">Email</label>
+        <input id="signupEmail" type="email" placeholder="you@example.com" required />
+        <label for="signupPassword">Password</label>
+        <input id="signupPassword" type="password" placeholder="At least 8 chars, letters + numbers" minlength="8" required />
+        <button type="button" id="submitSignup" class="btn primary">Register</button>
+        <div id="signupError" class="auth-error"></div>
+      </form>
+
+      <div class="auth-footer">
+        <p>After login you can add reports, clean trash, and manage teams.</p>
+      </div>
+    </section>
+
+    <div id="toast" class="toast"></div>
+
+  <script type="module" src="login.js"></script>
+</body>
+</html>
