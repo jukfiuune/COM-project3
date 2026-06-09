@@ -11,6 +11,7 @@ public sealed partial class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IPasswordService _passwordService;
     private readonly ITokenService _tokenService;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
 
     [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
     private static partial Regex EmailRegex();
@@ -18,11 +19,13 @@ public sealed partial class AuthService : IAuthService
     public AuthService(
         IUserRepository userRepository,
         IPasswordService passwordService,
-        ITokenService tokenService)
+        ITokenService tokenService,
+        IRefreshTokenRepository refreshTokenRepository)
     {
         _userRepository = userRepository;
         _passwordService = passwordService;
         _tokenService = tokenService;
+        _refreshTokenRepository = refreshTokenRepository;
     }
 
     public async Task<(AuthResponse? Response, string? Error)> SignupAsync(SignupRequest request)
@@ -55,10 +58,20 @@ public sealed partial class AuthService : IAuthService
         };
 
         var createdUser = await _userRepository.CreateAsync(user);
-        var token = _tokenService.GenerateAccessToken(createdUser);
+        var accessToken = _tokenService.GenerateAccessToken(createdUser);
+        var refreshToken = _tokenService.GenerateRefreshToken();
+        
+        await _refreshTokenRepository.CreateAsync(new Entities.RefreshToken
+        {
+            UserId = createdUser.Id,
+            TokenHash = _tokenService.HashToken(refreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        });
+
         return (new AuthResponse
         {
-            AccessToken = token,
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
             User = MapToDto(createdUser)
         }, null);
     }
@@ -69,12 +82,74 @@ public sealed partial class AuthService : IAuthService
         if (user is null || !_passwordService.Verify(request.Password, user.PasswordHash))
             return (null, "Invalid email or password.");
 
-        var token = _tokenService.GenerateAccessToken(user);
+        var accessToken = _tokenService.GenerateAccessToken(user);
+        var refreshToken = _tokenService.GenerateRefreshToken();
+        
+        await _refreshTokenRepository.CreateAsync(new Entities.RefreshToken
+        {
+            UserId = user.Id,
+            TokenHash = _tokenService.HashToken(refreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        });
+
         return (new AuthResponse
         {
-            AccessToken = token,
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
             User = MapToDto(user)
         }, null);
+    }
+
+    public async Task<(AuthResponse? Response, string? Error)> RefreshTokenAsync(string token)
+    {
+        var tokenHash = _tokenService.HashToken(token);
+        var refreshTokenEntity = await _refreshTokenRepository.GetByTokenAsync(tokenHash);
+
+        if (refreshTokenEntity is null || !refreshTokenEntity.IsActive)
+        {
+            return (null, "Invalid or expired refresh token.");
+        }
+
+        var user = await _userRepository.GetByIdAsync(refreshTokenEntity.UserId);
+        if (user is null)
+        {
+            return (null, "User not found.");
+        }
+
+        // Revoke the old token (token rotation)
+        refreshTokenEntity.IsRevoked = true;
+        await _refreshTokenRepository.UpdateAsync(refreshTokenEntity);
+
+        // Generate new tokens
+        var newAccessToken = _tokenService.GenerateAccessToken(user);
+        var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+        await _refreshTokenRepository.CreateAsync(new Entities.RefreshToken
+        {
+            UserId = user.Id,
+            TokenHash = _tokenService.HashToken(newRefreshToken),
+            ExpiresAt = DateTime.UtcNow.AddDays(7)
+        });
+
+        return (new AuthResponse
+        {
+            AccessToken = newAccessToken,
+            RefreshToken = newRefreshToken,
+            User = MapToDto(user)
+        }, null);
+    }
+
+    public async Task<bool> RevokeTokenAsync(string token)
+    {
+        var tokenHash = _tokenService.HashToken(token);
+        var refreshTokenEntity = await _refreshTokenRepository.GetByTokenAsync(tokenHash);
+
+        if (refreshTokenEntity is null || !refreshTokenEntity.IsActive)
+            return false;
+
+        refreshTokenEntity.IsRevoked = true;
+        await _refreshTokenRepository.UpdateAsync(refreshTokenEntity);
+        return true;
     }
 
     private static UserDto MapToDto(User user) => new()

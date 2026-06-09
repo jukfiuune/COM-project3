@@ -1,6 +1,6 @@
-import { showToast, fetchJson } from './utils.js';
+import { showToast } from './utils.js';
 import { saveSession } from './auth.js';
-import { getApiBase, detectApiBase } from './api.js';
+import { getApiBase, detectApiBase, authFetch } from './api.js';
 
 const elements = {
   tabLogin: document.getElementById('tabLogin'),
@@ -60,7 +60,7 @@ async function login() {
       email: elements.loginEmail.value.trim(),
       password: elements.loginPassword.value
     };
-    const data = await fetchJson(`${getApiBase()}/api/auth/login`, {
+    const data = await authFetch(`${getApiBase()}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -87,7 +87,7 @@ async function signup() {
       email: elements.signupEmail.value.trim(),
       password: elements.signupPassword.value
     };
-    const data = await fetchJson(`${getApiBase()}/api/auth/signup`, {
+    const data = await authFetch(`${getApiBase()}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)

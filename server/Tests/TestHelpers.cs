@@ -184,3 +184,40 @@ public sealed class FakeTeamRepository : ITeamRepository
         };
     }
 }
+
+public sealed class FakeRefreshTokenRepository : IRefreshTokenRepository
+{
+    private readonly List<COM_project3.Core.Entities.RefreshToken> _tokens = new();
+
+    public Task<COM_project3.Core.Entities.RefreshToken> GetByTokenAsync(string tokenHash)
+    {
+        var token = _tokens.FirstOrDefault(t => t.TokenHash == tokenHash);
+        return Task.FromResult(token);
+    }
+
+    public Task CreateAsync(COM_project3.Core.Entities.RefreshToken token)
+    {
+        token.Id = Guid.NewGuid().ToString();
+        _tokens.Add(token);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateAsync(COM_project3.Core.Entities.RefreshToken token)
+    {
+        var index = _tokens.FindIndex(t => t.Id == token.Id);
+        if (index >= 0)
+        {
+            _tokens[index] = token;
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task RevokeAllForUserAsync(string userId)
+    {
+        foreach (var token in _tokens.Where(t => t.UserId == userId))
+        {
+            token.IsRevoked = true;
+        }
+        return Task.CompletedTask;
+    }
+}

@@ -22,6 +22,7 @@ public static class WebApplicationExtensions
         app.UseAuthorization();
         app.UseMiddleware<RequestLoggingMiddleware>();
         app.UseMiddleware<CleanMapExceptionMiddleware>();
+        app.UseMiddleware<CsrfMiddleware>();
         app.MapAuthEndpoints();
         app.MapCleanMapEndpoints();
         app.MapTeamEndpoints();

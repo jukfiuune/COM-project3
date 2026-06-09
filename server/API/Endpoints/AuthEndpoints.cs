@@ -13,19 +13,73 @@ public static class AuthEndpoints
 
         group.MapPost("/signup", HandleSignup);
         group.MapPost("/login", HandleLogin);
+        group.MapPost("/refresh", HandleRefresh);
+        group.MapPost("/logout", HandleLogout);
         group.MapGet("/me", HandleMe).RequireAuthorization();
     }
 
-    private static async Task<IResult> HandleSignup(SignupRequest request, IAuthService authService)
+    private static void SetRefreshTokenCookie(HttpContext context, string refreshToken)
     {
-        var (response, error) = await authService.SignupAsync(request);
-        return error is not null ? Results.BadRequest(new { error }) : Results.Ok(response);
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true, // Set to true in production
+            SameSite = SameSiteMode.Strict,
+            Expires = DateTime.UtcNow.AddDays(7)
+        };
+        context.Response.Cookies.Append("refreshToken", refreshToken, cookieOptions);
     }
 
-    private static async Task<IResult> HandleLogin(LoginRequest request, IAuthService authService)
+    private static async Task<IResult> HandleSignup(SignupRequest request, IAuthService authService, HttpContext context)
+    {
+        var (response, error) = await authService.SignupAsync(request);
+        if (error is not null) return Results.BadRequest(new { error });
+        
+        SetRefreshTokenCookie(context, response.RefreshToken);
+        // Don't send refresh token in body
+        response.RefreshToken = string.Empty;
+        
+        return Results.Ok(response);
+    }
+
+    private static async Task<IResult> HandleLogin(LoginRequest request, IAuthService authService, HttpContext context)
     {
         var (response, error) = await authService.LoginAsync(request);
-        return error is not null ? Results.BadRequest(new { error }) : Results.Ok(response);
+        if (error is not null) return Results.BadRequest(new { error });
+
+        SetRefreshTokenCookie(context, response.RefreshToken);
+        // Don't send refresh token in body
+        response.RefreshToken = string.Empty;
+
+        return Results.Ok(response);
+    }
+
+    private static async Task<IResult> HandleRefresh(HttpContext context, IAuthService authService)
+    {
+        var refreshToken = context.Request.Cookies["refreshToken"];
+        if (string.IsNullOrEmpty(refreshToken))
+            return Results.Unauthorized();
+
+        var (response, error) = await authService.RefreshTokenAsync(refreshToken);
+        if (error is not null) return Results.Unauthorized();
+
+        SetRefreshTokenCookie(context, response.RefreshToken);
+        // Don't send refresh token in body
+        response.RefreshToken = string.Empty;
+
+        return Results.Ok(response);
+    }
+
+    private static async Task<IResult> HandleLogout(HttpContext context, IAuthService authService)
+    {
+        var refreshToken = context.Request.Cookies["refreshToken"];
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            await authService.RevokeTokenAsync(refreshToken);
+        }
+
+        context.Response.Cookies.Delete("refreshToken");
+        return Results.Ok();
     }
 
     private static IResult HandleMe(HttpContext httpContext)

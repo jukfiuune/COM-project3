@@ -3,16 +3,14 @@
  */
 import { showToast } from './utils.js';
 
+let _accessToken = null;
+
 export const auth = {
   get token() {
-    return localStorage.getItem('cm_access_token');
+    return _accessToken;
   },
   set token(val) {
-    if (val) {
-      localStorage.setItem('cm_access_token', val);
-    } else {
-      localStorage.removeItem('cm_access_token');
-    }
+    _accessToken = val;
   },
   get user() {
     try {
@@ -99,18 +97,22 @@ export function requireAuth(action) {
  * @param {string} apiBase - The active API base URL.
  */
 export async function restoreUserState(apiBase) {
-  const savedToken = auth.token;
-  if (!auth.userId && savedToken && apiBase) {
+  if (!auth.userId && apiBase) {
     try {
-      const res = await fetch(`${apiBase}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${savedToken}` },
+      function getCsrfToken() {
+        const match = document.cookie.match(new RegExp('(^| )csrfToken=([^;]+)'));
+        return match ? match[2] : '';
+      }
+
+      const res = await fetch(`${apiBase}/api/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-CSRF-Token': getCsrfToken() },
         signal: AbortSignal.timeout(6000)
       });
       if (res.ok) {
-        const user = await res.json();
-        if (user?.id) {
-          auth.user = user;
-        }
+        const data = await res.json();
+        saveSession(data);
       }
     } catch {
       // ignore restore failures

@@ -2,43 +2,15 @@
  * Connection and API utilities for Nexora
  */
 import { fetchJson } from './utils.js';
-import { getAuthHeaders } from './auth.js';
+import { getAuthHeaders, saveSession, clearSession, redirectToLogin } from './auth.js';
 
-export const API_BASE_DEFAULT = 'https://com-project3.onrender.com';
-export const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-
-let apiBase = localStorage.getItem('cm_api_base') || API_BASE_DEFAULT;
-let apiEnabled = false;
-
-// Sanitize initial state
-if (!IS_LOCAL && (apiBase.includes('localhost') || apiBase.includes('127.0.0.1'))) {
-  apiBase = API_BASE_DEFAULT;
-  localStorage.setItem('cm_api_base', apiBase);
+function getCsrfToken() {
+  const match = document.cookie.match(new RegExp('(^| )csrfToken=([^;]+)'));
+  return match ? match[2] : '';
 }
 
-/**
- * Builds candidate API URLs based on environment.
- * @returns {string[]}
- */
-export function buildApiCandidates() {
-  const stored = localStorage.getItem('cm_api_base');
-  const preferred = API_BASE_DEFAULT;
-  const storedIsLocal = stored && (stored.includes('localhost') || stored.includes('127.0.0.1'));
-  
-  const candidates = [
-    storedIsLocal && !IS_LOCAL ? null : stored,
-    preferred,
-    ...(IS_LOCAL ? [
-      'http://localhost:5432',
-      'http://localhost:30543',
-      'http://localhost:5210',
-      'http://localhost:7210',
-      'http://localhost:5000',
-      'http://localhost:5001'
-    ] : [])
-  ];
-  return Array.from(new Set(candidates.filter(Boolean)));
-}
+let apiBase = '';
+let apiEnabled = true;
 
 /**
  * Get current API Base URL.
@@ -69,20 +41,14 @@ export function setApiEnabled(val) {
  * @returns {Promise<string|null>} Active URL or null.
  */
 export async function detectApiBase() {
-  const candidates = buildApiCandidates();
-  for (const base of candidates) {
-    try {
-      await fetchJson(`${base}/api/cleanmap/ping`, {}, 6000);
-      apiBase = base;
-      localStorage.setItem('cm_api_base', base);
-      apiEnabled = true;
-      return base;
-    } catch {
-      continue;
-    }
+  try {
+    await fetchJson(`/api/cleanmap/ping`, {}, 6000);
+    apiEnabled = true;
+    return '';
+  } catch {
+    apiEnabled = false;
+    return null;
   }
-  apiEnabled = false;
-  return null;
 }
 
 /**
@@ -92,12 +58,43 @@ export async function detectApiBase() {
  * @param {number} [timeoutMs=30000] - Timeout.
  */
 export async function authFetch(url, options = {}, timeoutMs = 30000) {
+  const method = (options.method || 'GET').toUpperCase();
   const headers = {
     'Content-Type': 'application/json',
     ...getAuthHeaders(),
     ...(options.headers || {})
   };
-  return fetchJson(url, { ...options, headers }, timeoutMs);
+
+  if (['POST', 'PUT', 'DELETE'].includes(method)) {
+    headers['X-CSRF-Token'] = getCsrfToken();
+  }
+
+  try {
+    return await fetchJson(url, { ...options, headers }, timeoutMs);
+  } catch (err) {
+    if (err.message && err.message.includes('401')) {
+      // try to refresh
+      try {
+        const res = await fetch(`${getApiBase()}/api/auth/refresh`, { 
+          method: 'POST', 
+          credentials: 'include',
+          headers: { 'X-CSRF-Token': getCsrfToken() }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          saveSession(data);
+          // Retry original request
+          headers.Authorization = getAuthHeaders().Authorization;
+          return await fetchJson(url, { ...options, headers }, timeoutMs);
+        }
+      } catch (refreshErr) {
+        // Refresh failed
+      }
+      clearSession();
+      redirectToLogin(window.location.pathname);
+    }
+    throw err;
+  }
 }
 
 /**
@@ -121,4 +118,11 @@ export async function markCleanApi(reportId, payload) {
     method: 'POST',
     body: JSON.stringify(payload)
   }, 30000);
+}
+
+export async function logoutApi() {
+  try {
+    await authFetch(`${getApiBase()}/api/auth/logout`, { method: 'POST' });
+  } catch (e) {}
+  clearSession();
 }

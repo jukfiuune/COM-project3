@@ -15,6 +15,7 @@ public sealed class MongoDbContext
     }
 
     public IMongoCollection<User> Users => _database.GetCollection<User>("users");
+    public IMongoCollection<COM_project3.Data.Entities.RefreshToken> RefreshTokens => _database.GetCollection<COM_project3.Data.Entities.RefreshToken>("refreshTokens");
 
     private void EnsureIndexes()
     {
@@ -22,6 +23,9 @@ public sealed class MongoDbContext
             new CreateIndexOptions { Unique = true }));
 
         Users.Indexes.CreateOne(new CreateIndexModel<User>(Builders<User>.IndexKeys.Ascending(u => u.Username),
+            new CreateIndexOptions { Unique = true }));
+
+        RefreshTokens.Indexes.CreateOne(new CreateIndexModel<COM_project3.Data.Entities.RefreshToken>(Builders<COM_project3.Data.Entities.RefreshToken>.IndexKeys.Ascending(rt => rt.TokenHash),
             new CreateIndexOptions { Unique = true }));
     }
 }

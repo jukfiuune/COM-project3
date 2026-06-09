@@ -4,7 +4,7 @@ using System.Text;
 using Core.Configuration;
 using Core.Users;
 using Microsoft.IdentityModel.Tokens;
-
+using System.Security.Cryptography;
 namespace Core.Services;
 
 public sealed class TokenService : ITokenService
@@ -38,5 +38,23 @@ public sealed class TokenService : ITokenService
             signingCredentials: _signingCredentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public string GenerateRefreshToken()
+    {
+        var randomBytes = new byte[64];
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(randomBytes);
+        }
+        return Convert.ToBase64String(randomBytes);
+    }
+
+    public string HashToken(string token)
+    {
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(token);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
     }
 }

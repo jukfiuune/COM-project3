@@ -1,6 +1,6 @@
 import { showToast, fetchJson, formatDate, haversineDistance } from './utils.js';
 import { auth, isAuthenticated, requireAuth, clearSession, redirectToLogin } from './auth.js';
-import { getApiBase, isApiEnabled, setApiEnabled, detectApiBase, createReportApi, markCleanApi } from './api.js';
+import { getApiBase, isApiEnabled, setApiEnabled, detectApiBase, createReportApi, markCleanApi, logoutApi } from './api.js';
 
 const storageKey = 'cleanmap_v1';
 
@@ -752,9 +752,10 @@ function bindUI() {
   if (authBtn) {
     authBtn.addEventListener('click', () => {
       if (isAuthenticated()) {
-        clearSession();
-        updateAuthUi();
-        showToast('Logged out.');
+        logoutApi().then(() => {
+          updateAuthUi();
+          showToast('Logged out.');
+        });
       } else {
         redirectToLogin(window.location.pathname.replace(/^\//, '') || 'index.html');
       }

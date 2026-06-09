@@ -27,7 +27,8 @@ export async function fetchJson(url, options = {}, timeoutMs = 8000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
+    const fetchOptions = { ...options, signal: controller.signal, credentials: 'include' };
+    const response = await fetch(url, fetchOptions);
     
     let body = null;
     const contentType = response.headers.get('content-type') || '';

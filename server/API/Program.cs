@@ -18,17 +18,19 @@ builder.Services.AddSingleton<IPasswordService, PasswordService>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddHttpClient<IAiDetectionService, AiDetectionService>();
 
 builder.Services.AddSingleton(sp =>
 {
     var connectionString = builder.Configuration["CleanMapDatabase:ConnectionString"]
         ?? builder.Configuration["MongoDB:ConnectionString"]
         ?? builder.Configuration["MONGODB_CONNECTION_STRING"]
-        ?? "mongodb://localhost:27017";
+        ?? throw new InvalidOperationException("MongoDB connection string is missing.");
     var databaseName = builder.Configuration["CleanMapDatabase:DatabaseName"]
         ?? builder.Configuration["MongoDB:DatabaseName"]
         ?? builder.Configuration["MONGODB_DATABASE_NAME"]
-        ?? "nexora";
+        ?? throw new InvalidOperationException("MongoDB database name is missing.");
 
     return new MongoDbContext(connectionString, databaseName);
 });

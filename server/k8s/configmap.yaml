@@ -8,6 +8,7 @@ data:
   ASPNETCORE_ENVIRONMENT: "Production"
   CleanMapDatabase__DatabaseName: "nexora"
   CleanMapDatabase__ReportsCollectionName: "reports"
+  AiServer__Url: "http://ai-server:8000"
   Observability__Enabled: "true"
   Observability__ServiceName: "cleanmap-api"
   Observability__OtlpEndpoint: "http://grafana-alloy:4317"

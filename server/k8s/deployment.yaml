@@ -41,6 +41,11 @@ spec:
                 configMapKeyRef:
                   name: cleanmap-config
                   key: CleanMapDatabase__ReportsCollectionName
+            - name: AiServer__Url
+              valueFrom:
+                configMapKeyRef:
+                  name: cleanmap-config
+                  key: AiServer__Url
             - name: Observability__Enabled
               valueFrom:
                 configMapKeyRef:
