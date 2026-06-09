@@ -6,7 +6,7 @@ public interface ICleanMapReportRepository
 
     Task<CleanMapReport?> GetByIdAsync(string id, CancellationToken cancellationToken);
 
-    Task<CleanMapReport> CreateAsync(CreateCleanMapReportRequest request, IReadOnlyList<TrashDetection> detections, CancellationToken cancellationToken);
+    Task<CleanMapReport> CreateAsync(CreateCleanMapReportRequest request, CancellationToken cancellationToken);
 
     Task<CleanMapReport?> MarkCleanAsync(
         string id,

@@ -5,6 +5,7 @@ public sealed class CreateCleanMapReportRequest
     public double Lat { get; init; }
     public double Lng { get; init; }
     public string? Address { get; init; }
+    public IReadOnlyList<string>? Tags { get; init; }
     public string? Notes { get; init; }
     public string? PhotoBefore { get; init; }
 }

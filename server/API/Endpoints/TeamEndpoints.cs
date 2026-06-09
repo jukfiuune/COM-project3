@@ -101,19 +101,18 @@ public static class TeamEndpoints
             return Results.Ok(images.Select(ToImageResponse));
         });
 
-        // POST /api/teams/{id}/images?notes=xxx
+        // POST /api/teams/{id}/images?userId=xxx&notes=xxx
         group.MapPost("/{id}/images", async (
             string id,
+            string userId,
             IFormFile file,
             ITeamImageService imageService,
             IWebHostEnvironment env,
-            HttpContext httpContext,
             CancellationToken ct,
             string? notes = null) =>
         {
-            var uid = GetUserId(httpContext);
-            if (string.IsNullOrWhiteSpace(uid))
-                return Results.Unauthorized();
+            if (string.IsNullOrWhiteSpace(userId))
+                return Results.BadRequest(new { error = "userId is required." });
 
             if (file.Length == 0)
                 return Results.BadRequest(new { error = "File is empty." });
@@ -138,7 +137,7 @@ public static class TeamEndpoints
             }
 
             var imageUrl = $"/uploads/teams/{id}/{fileName}";
-            var (success, error, image) = await imageService.SaveImageAsync(id, uid, imageUrl, notes, ct);
+            var (success, error, image) = await imageService.SaveImageAsync(id, userId, imageUrl, notes, ct);
 
             if (!success)
             {

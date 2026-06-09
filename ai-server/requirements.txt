@@ -1,5 +1,0 @@
-fastapi
-uvicorn
-python-multipart
-ultralytics>=8.4
-opencv-python

@@ -22,7 +22,7 @@ internal static class CleanMapReportMapper
         };
     }
 
-    public static CleanMapReportDocument FromCreate(CreateCleanMapReportRequest request, IReadOnlyList<TrashDetection> detections)
+    public static CleanMapReportDocument FromCreate(CreateCleanMapReportRequest request)
     {
         return new CleanMapReportDocument
         {
@@ -34,12 +34,11 @@ internal static class CleanMapReportMapper
                 Coordinates = [request.Lng, request.Lat]
             },
             Address = Normalize(request.Address),
-            Tags = detections
-                .Select(d => d.Label)
-                .Where(label => !string.IsNullOrWhiteSpace(label))
-                .Select(label => label.Trim())
+            Tags = request.Tags?
+                .Where(tag => !string.IsNullOrWhiteSpace(tag))
+                .Select(tag => tag.Trim())
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList(),
+                .ToList() ?? [],
             Notes = Normalize(request.Notes),
             Status = CleanMapReportStatus.Dirty,
             PhotoBefore = Normalize(request.PhotoBefore),

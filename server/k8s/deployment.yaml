@@ -31,11 +31,6 @@ spec:
                 secretKeyRef:
                   name: cleanmap-secret
                   key: mongodb-connection-string
-            - name: AiServer__BaseUrl
-              valueFrom:
-                configMapKeyRef:
-                  name: cleanmap-config
-                  key: AiServer__BaseUrl
             - name: CleanMapDatabase__DatabaseName
               valueFrom:
                 configMapKeyRef:

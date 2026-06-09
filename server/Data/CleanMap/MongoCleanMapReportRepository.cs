@@ -69,12 +69,11 @@ public sealed class MongoCleanMapReportRepository : ICleanMapReportRepository, I
 
     public async Task<CleanMapReport> CreateAsync(
         CreateCleanMapReportRequest request,
-        IReadOnlyList<TrashDetection> detections,
         CancellationToken cancellationToken)
     {
         await EnsureIndexesAsync(cancellationToken);
 
-        var document = CleanMapReportMapper.FromCreate(request, detections);
+        var document = CleanMapReportMapper.FromCreate(request);
         await _reports.InsertOneAsync(document, cancellationToken: cancellationToken);
 
         return document.ToDomain();

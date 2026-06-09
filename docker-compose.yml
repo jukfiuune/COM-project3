@@ -1,37 +1,18 @@
 services:
-  mongodb:
-    image: mongo:latest
-    ports:
-      - "27017:27017"
-    restart: unless-stopped
-    volumes:
-      - mongo_data:/data/db
-
   nexora-api:
     build:
       context: .
-      dockerfile: server/Dockerfile
-    ports:
-      - "5432:5432"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - MongoDb__ConnectionString=mongodb://mongodb:27017
-      - MongoDb__DatabaseName=nexora
-      - AiServer__BaseUrl=http://100.67.162.29:8000
-      - Jwt__SecretKey=SuperSecretKeyThatIsAtLeast32BytesLong!
-      - Jwt__Issuer=NexoraApi
-      - Jwt__Audience=NexoraFrontend
-    depends_on:
-      - mongodb
-    restart: unless-stopped
-
-  nexora-frontend:
-    build:
-      context: frontend/cleanmap
       dockerfile: Dockerfile
     ports:
-      - "8000:80"
+      - "5087:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - MongoDB__ConnectionString=${MONGODB_CONNECTION_STRING}
+      - MongoDB__DatabaseName=nexora
     restart: unless-stopped
-
-volumes:
-  mongo_data:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

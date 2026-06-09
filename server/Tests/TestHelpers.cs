@@ -1,7 +1,6 @@
-using MongoDB.Bson;
 using Core.Repositories;
 using Core.Teams;
-using Core.Entities;
+using Core.Users;
 
 namespace Tests;
 
@@ -21,7 +20,7 @@ public sealed class FakeUserRepository : IUserRepository
         return Task.FromResult(user);
     }
 
-    public Task<User?> GetByIdAsync(ObjectId id)
+    public Task<User?> GetByIdAsync(string id)
     {
         var user = _users.FirstOrDefault(u => u.Id == id);
         return Task.FromResult(user);
@@ -36,9 +35,9 @@ public sealed class FakeUserRepository : IUserRepository
     public Task<User> CreateAsync(User user)
     {
         var copy = CopyUser(user);
-        if (copy.Id == ObjectId.Empty)
+        if (string.IsNullOrWhiteSpace(copy.Id))
         {
-            copy.Id = ObjectId.GenerateNewId();
+            copy.Id = Guid.NewGuid().ToString();
         }
 
         _users.Add(copy);
@@ -60,11 +59,7 @@ public sealed class FakeUserRepository : IUserRepository
 
     public Task<bool> ExistsByIdAsync(string id)
     {
-        if (!ObjectId.TryParse(id, out var objectId))
-        {
-            return Task.FromResult(false);
-        }
-        var exists = _users.Any(u => u.Id == objectId);
+        var exists = _users.Any(u => u.Id == id);
         return Task.FromResult(exists);
     }
 
@@ -187,42 +182,5 @@ public sealed class FakeTeamRepository : ITeamRepository
             CreatedAt = team.CreatedAt,
             UpdatedAt = team.UpdatedAt
         };
-    }
-}
-
-public sealed class FakeRefreshTokenRepository : IRefreshTokenRepository
-{
-    private readonly List<RefreshToken> _tokens = new();
-
-    public Task CreateAsync(RefreshToken token)
-    {
-        if (token.Id == ObjectId.Empty) token.Id = ObjectId.GenerateNewId();
-        _tokens.Add(token);
-        return Task.CompletedTask;
-    }
-
-    public Task<RefreshToken?> GetByTokenHashAsync(string tokenHash)
-    {
-        return Task.FromResult(_tokens.FirstOrDefault(t => t.TokenHash == tokenHash));
-    }
-
-    public Task RevokeAsync(ObjectId tokenId, string? replacedByTokenHash = null)
-    {
-        var token = _tokens.FirstOrDefault(t => t.Id == tokenId);
-        if (token != null)
-        {
-            token.IsRevoked = true;
-            if (replacedByTokenHash != null) token.ReplacedByTokenHash = replacedByTokenHash;
-        }
-        return Task.CompletedTask;
-    }
-
-    public Task RevokeAllForUserAsync(ObjectId userId)
-    {
-        foreach (var token in _tokens.Where(t => t.UserId == userId))
-        {
-            token.IsRevoked = true;
-        }
-        return Task.CompletedTask;
     }
 }

@@ -1,8 +1,7 @@
 using Core.Configuration;
 using Core.DTOs;
 using Core.Services;
-using Core.Entities;
-using MongoDB.Bson;
+using Core.Users;
 using Xunit;
 
 namespace Tests;
@@ -26,7 +25,7 @@ public sealed class AuthServiceTests
     public async Task SignupAsync_ReturnsError_WhenEmailIsInvalid()
     {
         var repo = new FakeUserRepository();
-        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
+        var service = new AuthService(repo, _passwordService, _tokenService);
 
         var (response, error) = await service.SignupAsync(new SignupRequest
         {
@@ -43,7 +42,7 @@ public sealed class AuthServiceTests
     public async Task SignupAsync_ReturnsError_WhenPasswordIsWeak()
     {
         var repo = new FakeUserRepository();
-        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
+        var service = new AuthService(repo, _passwordService, _tokenService);
 
         var (response, error) = await service.SignupAsync(new SignupRequest
         {
@@ -53,14 +52,14 @@ public sealed class AuthServiceTests
         });
 
         Assert.Null(response);
-        Assert.Equal("Password must be at least 8 characters long.", error);
+        Assert.Equal("Password must be at least 8 characters.", error);
     }
 
     [Fact]
     public async Task SignupAsync_ReturnsAuthResponse_WhenValid()
     {
         var repo = new FakeUserRepository();
-        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
+        var service = new AuthService(repo, _passwordService, _tokenService);
 
         var (response, error) = await service.SignupAsync(new SignupRequest
         {
@@ -82,7 +81,7 @@ public sealed class AuthServiceTests
         var repo = new FakeUserRepository();
         var createdUser = new User
         {
-            Id = ObjectId.GenerateNewId(),
+            Id = "user-1",
             Username = "user123",
             Email = "user@example.com",
             PasswordHash = _passwordService.Hash("Password1"),
@@ -90,9 +89,9 @@ public sealed class AuthServiceTests
         };
 
         await repo.CreateAsync(createdUser);
-        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
+        var service = new AuthService(repo, _passwordService, _tokenService);
 
-        var (response, refreshToken, error) = await service.LoginAsync(new LoginRequest
+        var (response, error) = await service.LoginAsync(new LoginRequest
         {
             Email = "user@example.com",
             Password = "wrong-password"
@@ -108,7 +107,7 @@ public sealed class AuthServiceTests
         var repo = new FakeUserRepository();
         var createdUser = new User
         {
-            Id = ObjectId.GenerateNewId(),
+            Id = "user-2",
             Username = "user123",
             Email = "user@example.com",
             PasswordHash = _passwordService.Hash("Password1"),
@@ -116,9 +115,9 @@ public sealed class AuthServiceTests
         };
 
         await repo.CreateAsync(createdUser);
-        var service = new AuthService(repo, new FakeRefreshTokenRepository(), _passwordService, _tokenService, _jwtSettings);
+        var service = new AuthService(repo, _passwordService, _tokenService);
 
-        var (response, refreshToken, error) = await service.LoginAsync(new LoginRequest
+        var (response, error) = await service.LoginAsync(new LoginRequest
         {
             Email = "user@example.com",
             Password = "Password1"
