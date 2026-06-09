@@ -26,4 +26,5 @@ COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:5432
 EXPOSE 5432
 
+
 ENTRYPOINT ["dotnet", "API.dll"]
