@@ -29,7 +29,7 @@
       <div id="membersList"></div>
       <div class="add-member-row" id="addMemberCard" style="display:none">
         <input type="text" id="newMemberId" placeholder="User ID or username to add" />
-        <button class="btn-primary btn-sm" onclick="addMember()">Add</button>
+        <button class="btn-primary btn-sm" id="btnAddMember">Add</button>
       </div>
     </section>
 
@@ -40,7 +40,7 @@
       <div class="upload-row">
         <input type="file" id="imageFile" accept=".jpg,.jpeg,.png,.webp" />
         <input type="text" id="imageNotes" placeholder="Notes (optional)" />
-        <button class="btn-primary btn-sm" onclick="uploadImage()">Upload</button>
+        <button class="btn-primary btn-sm" id="btnUploadImage">Upload</button>
       </div>
     </section>
   </div>
@@ -50,6 +50,6 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="team-detail.js?v=2"></script>
+<script type="module" src="team-detail.js"></script>
 </body>
 </html>

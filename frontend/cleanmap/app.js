@@ -1,3 +1,7 @@
+import { showToast, fetchJson, formatDate, haversineDistance } from './utils.js';
+import { auth, isAuthenticated, requireAuth, clearSession, redirectToLogin } from './auth.js';
+import { getApiBase, isApiEnabled, setApiEnabled, detectApiBase, createReportApi, markCleanApi } from './api.js';
+
 const storageKey = 'cleanmap_v1';
 
 const state = {
@@ -10,13 +14,8 @@ const state = {
   currentLocation: null,
   activeReportId: null,
   userMarker: null,
-  apiBase: null,
-  apiEnabled: false,
   clusterLayers: [],
-  auth: {
-    token: localStorage.getItem('cm_access_token'),
-    user: JSON.parse(localStorage.getItem('cm_user') || 'null')
-  }
+  auth: auth
 };
 
 const elements = {
@@ -93,43 +92,6 @@ function saveDB() {
   localStorage.setItem(storageKey, JSON.stringify(state.db));
 }
 
-function showToast(message, isError = false) {
-  elements.toast.textContent = message;
-  elements.toast.className = 'toast show' + (isError ? ' error' : '');
-  clearTimeout(elements.toast._timer);
-  elements.toast._timer = setTimeout(() => elements.toast.classList.remove('show'), 3000);
-}
-
-function getAuthHeaders() {
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
-  if (state.auth.token) {
-    headers.Authorization = `Bearer ${state.auth.token}`;
-  }
-
-  return headers;
-}
-
-function authFetch(url, options = {}, timeoutMs = 6000) {
-  if (!state.auth.token) {
-    return Promise.reject(new Error('Login required.'));
-  }
-
-  return fetchJson(url, {
-    ...options,
-    headers: {
-      ...getAuthHeaders(),
-      ...(options.headers || {})
-    }
-  }, timeoutMs);
-}
-
-function isAuthenticated() {
-  return !!state.auth.token && !!state.auth.user;
-}
-
 function updateAuthUi() {
   const authBtn = document.getElementById('authBtn');
   if (!authBtn) return;
@@ -141,79 +103,11 @@ function updateAuthUi() {
   }
 }
 
-function redirectToLogin(next = 'login.html') {
-  window.location.href = `login.html?next=${encodeURIComponent(next)}`;
-}
-
-function requireAuth(action) {
-  if (!isAuthenticated()) {
-    showToast('Login required before continuing.', true);
-    setTimeout(() => redirectToLogin(action), 800);
-    return false;
-  }
-  return true;
-}
-
-function buildApiCandidates() {
-  const stored = localStorage.getItem(`${storageKey}_api`);
-  const preferred = 'https://com-project3.onrender.com';
-  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const storedIsLocal = stored && (stored.includes('localhost') || stored.includes('127.0.0.1'));
-  const candidates = [
-    storedIsLocal && !isLocal ? null : stored,
-    preferred,
-    ...(isLocal ? [
-      'http://localhost:5432',
-      'http://localhost:30543',
-      'http://localhost:5210',
-      'https://localhost:7210',
-      'http://localhost:5000',
-      'https://localhost:5001'
-    ] : [])
-  ];
-  return Array.from(new Set(candidates.filter(Boolean)));
-}
-
-async function fetchJson(url, options = {}, timeoutMs = 4000) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      return await response.json();
-    }
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-async function detectApiBase() {
-  const candidates = buildApiCandidates();
-  for (const base of candidates) {
-    try {
-      await fetchJson(`${base}/api/cleanmap/ping`, {}, 6000);
-      state.apiBase = base;
-      state.apiEnabled = true;
-      return true;
-    } catch (err) {
-      continue;
-    }
-  }
-  state.apiEnabled = false;
-  state.apiBase = null;
-  return false;
-}
-
 async function syncFromApi() {
   const detected = await detectApiBase();
   if (!detected) return;
   try {
-    const reports = await fetchJson(`${state.apiBase}/api/cleanmap/reports`);
+    const reports = await fetchJson(`${getApiBase()}/api/cleanmap/reports`);
     if (Array.isArray(reports)) {
       state.db.reports = reports;
       saveDB();
@@ -221,23 +115,8 @@ async function syncFromApi() {
       updateProgress();
     }
   } catch (err) {
-    state.apiEnabled = false;
-    state.apiBase = null;
+    setApiEnabled(false);
   }
-}
-
-async function createReportApi(report) {
-  return authFetch(`${state.apiBase}/api/cleanmap/reports`, {
-    method: 'POST',
-    body: JSON.stringify(report)
-  }, 30000);
-}
-
-async function markCleanApi(reportId, payload) {
-  return authFetch(`${state.apiBase}/api/cleanmap/reports/${encodeURIComponent(reportId)}/clean`, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  }, 30000);
 }
 
 function initMap() {
@@ -281,15 +160,6 @@ function addMarker(report) {
   }).addTo(state.map);
   marker.on('click', () => openDetail(report.id));
   state.markers.set(report.id, marker);
-}
-
-function haversineDistance(lat1, lng1, lat2, lng2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function computeClusters(reports) {
@@ -701,10 +571,6 @@ function closeCleanModal() {
   state.activeReportId = null;
 }
 
-function formatDate(timestamp) {
-  return new Date(timestamp).toLocaleString();
-}
-
 async function submitReport() {
   if (!ensureLocationForReport()) {
     showToast('Location not ready yet.');
@@ -732,7 +598,7 @@ async function submitReport() {
     photoBefore: state.reportPhoto
   };
 
-  if (!state.apiEnabled) {
+  if (!isApiEnabled()) {
     const found = await detectApiBase();
     if (!found) {
       showToast('Server not reachable.');
@@ -761,7 +627,7 @@ async function submitClean() {
   const report = state.db.reports.find(item => item.id === state.activeReportId);
   if (!report) return;
 
-  if (state.apiEnabled) {
+  if (isApiEnabled()) {
     try {
       await markCleanApi(report.id, { photoAfter: state.cleanPhoto });
       closeCleanModal();
@@ -770,8 +636,7 @@ async function submitClean() {
       showToast('Marked as cleaned.');
       return;
     } catch (err) {
-      state.apiEnabled = false;
-      state.apiBase = null;
+      setApiEnabled(false);
       showToast('Server not reachable. Saved locally.');
     }
   }
@@ -887,11 +752,7 @@ function bindUI() {
   if (authBtn) {
     authBtn.addEventListener('click', () => {
       if (isAuthenticated()) {
-        localStorage.removeItem('cm_user_id');
-        localStorage.removeItem('cm_access_token');
-        localStorage.removeItem('cm_user');
-        state.auth.token = null;
-        state.auth.user = null;
+        clearSession();
         updateAuthUi();
         showToast('Logged out.');
       } else {
@@ -913,7 +774,7 @@ async function init() {
   renderMarkers();
   updateProgress();
   await syncFromApi();
-  if (state.apiEnabled) showToast('Connected to Nexora server.');
+  if (isApiEnabled()) showToast('Connected to Nexora server.');
   window.addEventListener('beforeunload', stopCamera);
 }
 

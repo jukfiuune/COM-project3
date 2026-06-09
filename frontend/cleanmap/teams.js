@@ -1,130 +1,34 @@
-const API_BASE_DEFAULT = 'https://com-project3.onrender.com';
-const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-
-const API_CANDIDATES = [
-  ...(IS_LOCAL ? [
-    'http://localhost:5432',
-    'http://localhost:30543',
-    'http://localhost:5210',
-    'http://localhost:7210',
-    'http://localhost:5000',
-    'http://localhost:5001'
-  ] : []),
-  API_BASE_DEFAULT
-];
-
-let API_BASE = localStorage.getItem('cm_api_base') || API_BASE_DEFAULT;
-if (!IS_LOCAL && (API_BASE.includes('localhost') || API_BASE.includes('127.0.0.1'))) {
-  API_BASE = API_BASE_DEFAULT;
-  localStorage.setItem('cm_api_base', API_BASE);
-}
-let currentUserId = localStorage.getItem('cm_user_id') || '';
-let currentUserName = '';
-
-updateUserLabel();
-attachAuthButton();
-
-if (!currentUserId) {
-  showToast('Tap Login to sign in or register.', false);
-}
-
-detectApiAndLoad();
+import { showToast, esc } from './utils.js';
+import { auth, getAuthHeaders, restoreUserState, clearSession } from './auth.js';
+import { getApiBase, detectApiBase } from './api.js';
 
 async function detectApiAndLoad() {
-  const candidates = API_CANDIDATES.slice();
-  if (API_BASE && !candidates.includes(API_BASE)) candidates.unshift(API_BASE);
-
-  let found = '';
-  for (const base of candidates) {
-    try {
-      const res = await fetch(`${base}/api/cleanmap/ping`, { signal: AbortSignal.timeout(6000) });
-      if (res.ok) { found = base; break; }
-    } catch {  }
-  }
-
-  if (found) {
-    API_BASE = found;
-    localStorage.setItem('cm_api_base', found);
-  }
-
-  if (!API_BASE) {
-    localStorage.removeItem('cm_api_base');
+  const base = await detectApiBase();
+  if (!base) {
     document.getElementById('teamsContainer').innerHTML =
       `<div class="empty-state"><p>Could not connect to API. Is the server running?</p></div>`;
     return;
   }
 
-  await restoreUserState();
+  await restoreUserState(getApiBase());
+  updateUserLabel();
 
-  if (currentUserId) {
+  if (auth.userId) {
     loadTeams();
   } else {
     window.location.href = 'login.html?next=teams.html';
   }
 }
 
-async function restoreUserState() {
-  const savedUser = localStorage.getItem('cm_user');
-  const savedToken = localStorage.getItem('cm_access_token');
-
-  if (savedUser) {
-    try {
-      const parsed = JSON.parse(savedUser);
-      if (parsed?.id) {
-        currentUserId = parsed.id;
-        currentUserName = parsed?.username || '';
-        localStorage.setItem('cm_user_id', currentUserId);
-      }
-    } catch {
-      // ignore invalid saved user
-    }
-  }
-
-  if (!currentUserId && savedToken) {
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${savedToken}` },
-        signal: AbortSignal.timeout(6000)
-      });
-      if (res.ok) {
-        const user = await res.json();
-        if (user?.id) {
-          currentUserId = user.id;
-          currentUserName = user?.username || '';
-          localStorage.setItem('cm_user_id', currentUserId);
-          localStorage.setItem('cm_user', JSON.stringify(user));
-        }
-      }
-    } catch {
-      // ignore restore failures
-    }
-  }
-
-  updateUserLabel();
-}
-
-function setUserId() {
-  const val = document.getElementById('userIdInput').value.trim();
-  if (!val) { showToast('Enter a user ID.', true); return; }
-  currentUserId = val;
-  localStorage.setItem('cm_user_id', val);
-  updateUserLabel();
-  loadTeams();
-}
-
 function updateUserLabel() {
   const el = document.getElementById('currentUserLabel');
-  const userDisplay = currentUserName || currentUserId;
+  if (!el) return;
+  const userDisplay = auth.username || auth.userId;
   el.textContent = userDisplay ? `Signed in as: ${userDisplay}` : '';
   const authBtn = document.getElementById('authBtn');
   if (authBtn) {
-    authBtn.textContent = currentUserId ? 'Logout' : 'Login';
+    authBtn.textContent = auth.userId ? 'Logout' : 'Login';
   }
-}
-
-function getAuthHeaders() {
-  const token = localStorage.getItem('cm_access_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 function attachAuthButton() {
@@ -132,12 +36,8 @@ function attachAuthButton() {
   if (!authBtn) return;
 
   authBtn.addEventListener('click', () => {
-    if (currentUserId) {
-      localStorage.removeItem('cm_user_id');
-      localStorage.removeItem('cm_access_token');
-      localStorage.removeItem('cm_user');
-      currentUserId = '';
-      currentUserName = '';
+    if (auth.userId) {
+      clearSession();
       updateUserLabel();
       showToast('Logged out.');
       document.getElementById('teamsContainer').innerHTML =
@@ -149,12 +49,12 @@ function attachAuthButton() {
 }
 
 async function loadTeams() {
-  if (!currentUserId) return;
+  if (!auth.userId) return;
   document.getElementById('teamsContainer').innerHTML =
     '<div class="teams-loading"><div class="spinner"></div></div>';
 
   try {
-    const res = await fetch(`${API_BASE}/api/teams/my`, {
+    const res = await fetch(`${getApiBase()}/api/teams/my`, {
       headers: getAuthHeaders()
     });
     const teams = await res.json();
@@ -167,6 +67,7 @@ async function loadTeams() {
 
 function renderTeams(teams) {
   const container = document.getElementById('teamsContainer');
+  if (!container) return;
 
   if (!teams.length) {
     container.innerHTML = `
@@ -186,18 +87,18 @@ function renderTeams(teams) {
 }
 
 function teamCard(team) {
-  const isOwner = team.createdBy === currentUserId;
+  const isOwner = team.createdBy === auth.userId;
   const role = isOwner ? 'owner' : 'member';
   const count = team.members.length;
 
   return `
-    <div class="team-card" onclick="goToTeam('${esc(team.id)}')">
+    <div class="team-card" data-team-id="${esc(team.id)}">
       <h3>${esc(team.name)}</h3>
       <p>${esc(team.description ?? 'No description.')}</p>
       <div class="team-card-footer">
         <span class="member-count">${count} member${count !== 1 ? 's' : ''}</span>
         <span class="role-badge role-${role}">${role}</span>
-        ${isOwner ? `<button class="btn-delete-team" onclick="event.stopPropagation(); deleteTeam('${esc(team.id)}', '${esc(team.name)}')">&times; Delete</button>` : ''}
+        ${isOwner ? `<button class="btn-delete-team" data-team-id="${esc(team.id)}" data-team-name="${esc(team.name)}">&times; Delete</button>` : ''}
       </div>
     </div>`;
 }
@@ -207,7 +108,7 @@ function goToTeam(id) {
 }
 
 function openCreateModal() {
-  if (!currentUserId) { showToast('Set your user ID first.', true); return; }
+  if (!auth.userId) { showToast('Set your user ID first.', true); return; }
   document.getElementById('createModal').classList.add('open');
   document.getElementById('teamName').focus();
 }
@@ -218,10 +119,6 @@ function closeCreateModal() {
   document.getElementById('teamDesc').value = '';
 }
 
-function handleOverlayClick(e) {
-  if (e.target === e.currentTarget) closeCreateModal();
-}
-
 async function createTeam() {
   const name = document.getElementById('teamName').value.trim();
   const description = document.getElementById('teamDesc').value.trim();
@@ -229,7 +126,7 @@ async function createTeam() {
   if (!name) { showToast('Team name is required.', true); return; }
 
   try {
-    const res = await fetch(`${API_BASE}/api/teams`, {
+    const res = await fetch(`${getApiBase()}/api/teams`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify({ name, description }),
@@ -254,7 +151,7 @@ async function deleteTeam(teamId, teamName) {
 
   try {
     const res = await fetch(
-      `${API_BASE}/api/teams/${encodeURIComponent(teamId)}`,
+      `${getApiBase()}/api/teams/${encodeURIComponent(teamId)}`,
       { method: 'DELETE', headers: getAuthHeaders() }
     );
 
@@ -271,16 +168,43 @@ async function deleteTeam(teamId, teamName) {
   }
 }
 
-function showToast(message, isError = false) {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.className = 'toast show' + (isError ? ' error' : '');
-  clearTimeout(toast._timer);
-  toast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+function init() {
+  // Bind static UI listeners
+  document.getElementById('btnOpenCreateModal').addEventListener('click', openCreateModal);
+  document.getElementById('btnCloseCreateModal').addEventListener('click', closeCreateModal);
+  document.getElementById('btnCancelCreateModal').addEventListener('click', closeCreateModal);
+  document.getElementById('btnConfirmCreateTeam').addEventListener('click', createTeam);
+  
+  // Overlay click to close
+  document.getElementById('createModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeCreateModal();
+  });
+
+  // Event delegation for dynamic team cards
+  document.getElementById('teamsContainer').addEventListener('click', (e) => {
+    const deleteBtn = e.target.closest('.btn-delete-team');
+    if (deleteBtn) {
+      e.stopPropagation();
+      const teamId = deleteBtn.dataset.teamId;
+      const teamName = deleteBtn.dataset.teamName;
+      deleteTeam(teamId, teamName);
+      return;
+    }
+    const card = e.target.closest('.team-card');
+    if (card) {
+      const teamId = card.dataset.teamId;
+      goToTeam(teamId);
+    }
+  });
+
+  updateUserLabel();
+  attachAuthButton();
+
+  if (!auth.userId) {
+    showToast('Tap Login to sign in or register.', false);
+  }
+
+  void detectApiAndLoad();
 }
 
-function esc(str) {
-  const d = document.createElement('div');
-  d.textContent = String(str);
-  return d.innerHTML;
-}
+document.addEventListener('DOMContentLoaded', init);

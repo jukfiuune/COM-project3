@@ -15,7 +15,7 @@
 <nav class="teams-nav">
   <a class="teams-nav-logo" href="index.html">← Nexora</a>
   <span class="teams-nav-title">Teams</span>
-  <button class="btn-primary btn-sm" onclick="openCreateModal()">+ New Team</button>
+  <button class="btn-primary btn-sm" id="btnOpenCreateModal">+ New Team</button>
 </nav>
 
 <main class="teams-main">
@@ -37,11 +37,11 @@
 </main>
 
 <!-- Create Team Modal -->
-<div class="t-overlay" id="createModal" onclick="handleOverlayClick(event)">
+<div class="t-overlay" id="createModal">
   <div class="t-modal">
     <div class="t-modal-header">
       <h2>Create a New Team</h2>
-      <button class="close-btn" onclick="closeCreateModal()">✕</button>
+      <button class="close-btn" id="btnCloseCreateModal">✕</button>
     </div>
     <div class="form-row">
       <label>Team Name *</label>
@@ -52,14 +52,14 @@
       <textarea id="teamDesc" placeholder="What does your team do?"></textarea>
     </div>
     <div class="t-modal-actions">
-      <button class="btn-ghost" onclick="closeCreateModal()">Cancel</button>
-      <button class="btn-primary" onclick="createTeam()">Create</button>
+      <button class="btn-ghost" id="btnCancelCreateModal">Cancel</button>
+      <button class="btn-primary" id="btnConfirmCreateTeam">Create</button>
     </div>
   </div>
 </div>
 
 <div id="toast" class="toast"></div>
 
-<script src="teams.js?v=2"></script>
+<script type="module" src="teams.js"></script>
 </body>
 </html>

@@ -1,23 +1,6 @@
-const API_BASE_DEFAULT = 'https://com-project3.onrender.com';
-const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-
-const API_CANDIDATES = [
-  ...(IS_LOCAL ? [
-    'http://localhost:5432',
-    'http://localhost:30543',
-    'http://localhost:5210',
-    'http://localhost:7210',
-    'http://localhost:5000',
-    'http://localhost:5001'
-  ] : []),
-  API_BASE_DEFAULT
-];
-
-let API_BASE = localStorage.getItem('cm_api_base') || API_BASE_DEFAULT;
-if (!IS_LOCAL && (API_BASE.includes('localhost') || API_BASE.includes('127.0.0.1'))) {
-  API_BASE = API_BASE_DEFAULT;
-  localStorage.setItem('cm_api_base', API_BASE);
-}
+import { showToast, fetchJson } from './utils.js';
+import { saveSession } from './auth.js';
+import { getApiBase, detectApiBase } from './api.js';
 
 const elements = {
   tabLogin: document.getElementById('tabLogin'),
@@ -32,8 +15,7 @@ const elements = {
   submitLogin: document.getElementById('submitLogin'),
   submitSignup: document.getElementById('submitSignup'),
   loginError: document.getElementById('loginError'),
-  signupError: document.getElementById('signupError'),
-  toast: document.getElementById('toast')
+  signupError: document.getElementById('signupError')
 };
 
 const nextPage = (() => {
@@ -54,34 +36,6 @@ const nextPage = (() => {
   return next || 'index.html';
 })();
 
-async function detectApiBase() {
-  const candidates = API_CANDIDATES.slice();
-  if (API_BASE && !candidates.includes(API_BASE)) candidates.unshift(API_BASE);
-
-  for (const base of candidates) {
-    try {
-      const res = await fetch(`${base}/api/cleanmap/ping`, { signal: AbortSignal.timeout(6000) });
-      if (res.ok) {
-        API_BASE = base;
-        localStorage.setItem('cm_api_base', base);
-        return true;
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  localStorage.removeItem('cm_api_base');
-  return false;
-}
-
-function showToast(message, isError = false) {
-  elements.toast.textContent = message;
-  elements.toast.className = 'toast show' + (isError ? ' error' : '');
-  clearTimeout(elements.toast._timer);
-  elements.toast._timer = setTimeout(() => elements.toast.classList.remove('show'), 3000);
-}
-
 function switchTab(mode) {
   if (mode === 'login') {
     elements.tabLogin.classList.add('active');
@@ -96,21 +50,6 @@ function switchTab(mode) {
   }
 }
 
-async function fetchJson(url, options = {}, timeoutMs = 8000) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    const body = await response.json().catch(() => null);
-    if (!response.ok) {
-      throw new Error(body?.error || response.statusText || `HTTP ${response.status}`);
-    }
-    return body;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 async function login() {
   elements.submitLogin.disabled = true;
   elements.loginError.textContent = '';
@@ -121,7 +60,7 @@ async function login() {
       email: elements.loginEmail.value.trim(),
       password: elements.loginPassword.value
     };
-    const data = await fetchJson(`${API_BASE}/api/auth/login`, {
+    const data = await fetchJson(`${getApiBase()}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -148,7 +87,7 @@ async function signup() {
       email: elements.signupEmail.value.trim(),
       password: elements.signupPassword.value
     };
-    const data = await fetchJson(`${API_BASE}/api/auth/signup`, {
+    const data = await fetchJson(`${getApiBase()}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -162,12 +101,6 @@ async function signup() {
   } finally {
     elements.submitSignup.disabled = false;
   }
-}
-
-function saveSession(data) {
-  localStorage.setItem('cm_access_token', data.accessToken);
-  localStorage.setItem('cm_user', JSON.stringify(data.user));
-  localStorage.setItem('cm_user_id', data.user?.id || data.user?.userId || '');
 }
 
 async function ensureApi() {
